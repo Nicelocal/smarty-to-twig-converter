@@ -140,8 +140,12 @@ abstract class ConverterAbstract
 
         return $pairs;
     }
-    private function splitSanitize(string $string, string $delim): string {
-        return implode($delim, array_map($this->sanitizeValue(...), $this->splitParsing($string, $delim)));
+    private function splitSanitize(string $string, array $delims): string {
+        if (!$delims) {
+            return $this->sanitizeValue($string);
+        }
+        $delim = array_pop($delims);
+        return implode($this->sanitizeValue($delim) ?: $delim, array_map(fn ($v) => $this->splitSanitize($v, $delims), $this->splitParsing($string, $delim)));
     }
     private function splitParsing(string $string, string $delim): array {
         $final = [];
@@ -171,10 +175,20 @@ abstract class ConverterAbstract
                 } elseif ($cur === '(') {
                     $value .= $cur;
                     $stack []= ')';
-                } elseif (in_array($cur, $delim, true) && !$stack && trim($value) !== '') {
-                    return trim($value);
-                } else {
-                    $value .= $cur;
+                } else{
+                    $has_delim = false;
+                    foreach ($delim as $d) {
+                        if (substr($string, $x, strlen($d)) === $d) {
+                            $has_delim = true;
+                            break;
+                        }
+                    }
+                    if ($has_delim && !$stack && trim($value) !== '') {
+                        $x += strlen($d)-1;
+                        return trim($value);
+                    } else {
+                        $value .= $cur;
+                    }
                 }
             }
         }
@@ -276,7 +290,7 @@ abstract class ConverterAbstract
                 $expression = $matches[0];
                 $expression = rtrim(ltrim($expression, "("), ")");
 
-                return '('.$this->splitSanitize($expression, ',').')';
+                return '('.$this->splitSanitize($expression, [',']).')';
             },
             $string
         );
@@ -358,14 +372,14 @@ abstract class ConverterAbstract
         $expression = $this->convertFilters($expression);
 
         $expression = preg_replace_callback(
-            "/(\S+)(\+|-(?!>)|\*|\/|%|&&|\|\|)(\S+)/",
+            "/(\S+)(\+|-(?!>)|\?:|\*|\/|%|&&|\|\|)(\S+)/",
             function ($matches) {
                 return $matches[1] . " " . $matches[2] . " " . $matches[3];
             },
             $expression
         );
 
-        return $this->splitSanitize($expression, ' ');
+        return $this->splitSanitize($expression, [' ']);
     }
 
     /**
