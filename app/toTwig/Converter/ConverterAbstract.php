@@ -130,7 +130,9 @@ abstract class ConverterAbstract
                 if (end($stack) === $cur) {
                     $value .= $cur;
                     array_pop($stack);
-                } elseif ($prev !== '\\') {
+                } elseif ($prev === '\\') {
+                    $value .= $cur;
+                } else {
                     if (in_array($cur, ['"', "'"])) {
                         $value .= $cur;
                         $stack []= $cur;
