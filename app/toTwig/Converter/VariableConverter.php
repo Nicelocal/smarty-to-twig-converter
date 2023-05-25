@@ -22,7 +22,7 @@ class VariableConverter extends ConverterAbstract
 
     public function convert(string $content): string
     {
-        $pattern = '/\[\{([^{}]+)?\}\]/';
+        $pattern = '/\{\{([^{}]+)?\}\}/';
 
         return preg_replace_callback(
             $pattern,

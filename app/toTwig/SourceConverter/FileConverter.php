@@ -54,6 +54,7 @@ class FileConverter extends SourceConverter
                 continue;
             }
 
+            echo("Converting ".$file->getPathName().PHP_EOL);
             $changed += $this->convertFile($file, $dryRun, $diff, $converters);
         }
 

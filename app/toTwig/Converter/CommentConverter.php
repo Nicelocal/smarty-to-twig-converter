@@ -22,7 +22,7 @@ class CommentConverter extends ConverterAbstract
 
     public function convert(string $content): string
     {
-        $pattern = '#\[{\*(.*)\*}]#isU';
+        $pattern = '#\{{\*(.*)\*}}#isU';
 
         return preg_replace_callback(
             $pattern,

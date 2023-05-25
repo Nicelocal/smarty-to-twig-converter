@@ -91,7 +91,7 @@ abstract class ConverterAbstract
      */
     protected function getOpeningTagPattern(string $tagName): string
     {
-        return sprintf("#\[\{\s*%s\b\s*((?:(?!\[\{|\}\]).(?<!\[\{)(?<!\}\]))+)?\}\]#is", preg_quote($tagName, '#'));
+        return sprintf("#\{\{\s*%s\b\s*((?:(?!\{\{|\}\}).(?<!\{\{)(?<!\}\}))+)?\}\}#is", preg_quote($tagName, '#'));
     }
 
     /**
@@ -99,7 +99,7 @@ abstract class ConverterAbstract
      */
     protected function getClosingTagPattern(string $tagName): string
     {
-        return sprintf("#\[\{\s*/%s\s*\}\]#i", preg_quote($tagName, '#'));
+        return sprintf("#\{\{\s*/%s\s*\}\}#i", preg_quote($tagName, '#'));
     }
 
     /**
@@ -112,22 +112,49 @@ abstract class ConverterAbstract
     protected function extractAttributes(string $string): array
     {
         //Initialize variables
-        $attr = $pairs = [];
-        $pattern = '/(?:([\w:\-]+)\s*=\s*)?'
-                   . '((?:".*?"|\'.*?\'|(?:[$\w\->():]+))(?:[\|]?(?:\'\s+\'|"\s+"|[^\s}]|(}(?!])))*))/';
-
-        // Lets grab all the key/value pairs using a regular expression
-        preg_match_all($pattern, $string, $attr);
-        if (is_array($attr)) {
-            $numPairs = count($attr[1]);
-
-            for ($i = 0; $i < $numPairs; $i++) {
-                $value = trim($attr[2][$i]);
-                $key = ($attr[1][$i]) ? trim($attr[1][$i]) : trim(trim($value, '"'), "'");
-
-                $pairs[$key] = $value;
+        $stack = [];
+        $pairs = [];
+        $is_key = true;
+        $key = '';
+        $value = '';
+        for ($x = 0; $x < strlen($string); $x++) {
+            $cur = $string[$x];
+            $prev = $string[$x-1] ?? '';
+            if ($is_key) {
+                if ($cur === '=') {
+                    $is_key = false;
+                } else {
+                    $key .= $cur;
+                }
+            } else {
+                if (end($stack) === $cur) {
+                    $value .= $cur;
+                    array_pop($stack);
+                } elseif ($prev !== '\\') {
+                    if (in_array($cur, ['"', "'"])) {
+                        $value .= $cur;
+                        $stack []= $cur;
+                    } elseif ($cur === '[') {
+                        $value .= $cur;
+                        $stack []= ']';
+                    } elseif ($cur === '(') {
+                        $value .= $cur;
+                        $stack []= ')';
+                    } elseif ($cur === ' ' && !$stack && trim($value) !== '') {
+                        $pairs[trim($key)] = trim($value);
+                        $value = $key = '';
+                        $is_key = true;
+                    } else {
+                        $value .= $cur;
+                    }
+                }
             }
         }
+        $key = trim($key);
+        if ($key !== '') {
+            $pairs[trim($key)] = trim($value);
+        }
+        //var_dump($string, $pairs);
 
         return $pairs;
     }
