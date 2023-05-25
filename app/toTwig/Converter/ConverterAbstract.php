@@ -12,6 +12,7 @@
 namespace toTwig\Converter;
 
 use AssertionError;
+use Exception;
 use SplFileInfo;
 use toTwig\FilterNameMap;
 
@@ -139,6 +140,16 @@ abstract class ConverterAbstract
 
         return $pairs;
     }
+    private function splitSanitize(string $string, string $delim): string {
+        return implode($delim, array_map($this->sanitizeValue(...), $this->splitParsing($string, $delim)));
+    }
+    private function splitParsing(string $string, string $delim): array {
+        $final = [];
+        for ($x = 0; $x < strlen($string); $x++) {
+            $final []= $this->parseValue($string, $x, [$delim]);
+        }
+        return $final;
+    }
     private function parseValue(string $string, int &$x, array $delim): string {
         $stack = [];
         $value = '';
@@ -234,7 +245,7 @@ abstract class ConverterAbstract
 
         // Handle "($var"
         if ($string[0] == "(") {
-            return "(" . $this->sanitizeValue(ltrim($string, "("));
+            return "(" . $this->convertExpression(ltrim($string, "("));
         }
 
         // Handle "!$var"
@@ -265,12 +276,7 @@ abstract class ConverterAbstract
                 $expression = $matches[0];
                 $expression = rtrim(ltrim($expression, "("), ")");
 
-                $parts = explode(",", $expression);
-                foreach ($parts as &$part) {
-                    $part = $this->sanitizeValue($part);
-                }
-
-                return sprintf("(%s)", implode(", ", $parts));
+                return '('.$this->splitSanitize($expression, ',').')';
             },
             $string
         );
@@ -306,7 +312,7 @@ abstract class ConverterAbstract
         for (; $x < strlen($string); $x++) {
             $cur = $string[$x];
             if ($state === self::STATE_ARGS) {
-                $filter_args []= $this->sanitizeValue($this->parseValue($string, $x, [',', '|']));
+                $filter_args []= $this->sanitizeValue($this->parseValue($string, $x, [',', ':', '|']));
                 if (($string[$x] ?? '') === '|') {
                     $final .= '|'.$filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
                     $filter_name = '';
@@ -359,12 +365,7 @@ abstract class ConverterAbstract
             $expression
         );
 
-        $parts = explode(" ", $expression);
-        foreach ($parts as &$part) {
-            $part = $this->sanitizeValue($part);
-        }
-
-        return implode(" ", $parts);
+        return $this->splitSanitize($expression, ' ');
     }
 
     /**
