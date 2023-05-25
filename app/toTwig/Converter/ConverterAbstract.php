@@ -11,6 +11,7 @@
 
 namespace toTwig\Converter;
 
+use AssertionError;
 use SplFileInfo;
 use toTwig\FilterNameMap;
 
@@ -111,15 +112,11 @@ abstract class ConverterAbstract
      */
     protected function extractAttributes(string $string): array
     {
-        //Initialize variables
-        $stack = [];
         $pairs = [];
         $is_key = true;
         $key = '';
-        $value = '';
         for ($x = 0; $x < strlen($string); $x++) {
             $cur = $string[$x];
-            $prev = $string[$x-1] ?? '';
             if ($is_key) {
                 if ($cur === '=') {
                     $is_key = false;
@@ -127,38 +124,50 @@ abstract class ConverterAbstract
                     $key .= $cur;
                 }
             } else {
-                if (end($stack) === $cur) {
-                    $value .= $cur;
-                    array_pop($stack);
-                } elseif ($prev === '\\') {
-                    $value .= $cur;
-                } else {
-                    if (in_array($cur, ['"', "'"])) {
-                        $value .= $cur;
-                        $stack []= $cur;
-                    } elseif ($cur === '[') {
-                        $value .= $cur;
-                        $stack []= ']';
-                    } elseif ($cur === '(') {
-                        $value .= $cur;
-                        $stack []= ')';
-                    } elseif ($cur === ' ' && !$stack && trim($value) !== '') {
-                        $pairs[trim($key)] = trim($value);
-                        $value = $key = '';
-                        $is_key = true;
-                    } else {
-                        $value .= $cur;
-                    }
-                }
+                $value = $this->parseValue($string, $x, [' ']);
+                $pairs[trim($key)] = trim($value);
+                $key = '';
+                $is_key = true;
             }
         }
         $key = trim($key);
+        $value = $this->parseValue($string, $x, [' ']);
         if ($key !== '') {
             $pairs[trim($key)] = trim($value);
         }
         //var_dump($string, $pairs);
 
         return $pairs;
+    }
+    private function parseValue(string $string, int &$x, array $delim): string {
+        $stack = [];
+        $value = '';
+        for (; $x < strlen($string); $x++) {
+            $cur = $string[$x];
+            $prev = $string[$x-1] ?? '';
+            if (end($stack) === $cur) {
+                $value .= $cur;
+                array_pop($stack);
+            } elseif ($prev === '\\') {
+                $value .= $cur;
+            } else {
+                if (in_array($cur, ['"', "'"])) {
+                    $value .= $cur;
+                    $stack []= $cur;
+                } elseif ($cur === '[') {
+                    $value .= $cur;
+                    $stack []= ']';
+                } elseif ($cur === '(') {
+                    $value .= $cur;
+                    $stack []= ')';
+                } elseif (in_array($cur, $delim, true) && !$stack && trim($value) !== '') {
+                    return trim($value);
+                } else {
+                    $value .= $cur;
+                }
+            }
+        }
+        return trim($value);
     }
 
     /**
@@ -267,6 +276,8 @@ abstract class ConverterAbstract
         );
     }
 
+    private const STATE_FILTER = 0;
+    private const STATE_ARGS = 1;
     /**
      * Handle translation of filters
      * For example:
@@ -275,27 +286,53 @@ abstract class ConverterAbstract
      */
     private function convertFilters(string $string): string
     {
-        return preg_replace_callback(
-            '/\|@?(?:\w+)(?:\:|\b)(?:"\s+"|\'\s+\'|[^\s}|])*/',
-            function ($matches) {
-                $expression = $matches[0];
-                $expression = ltrim($expression, "|");
+        $x = 0;
+        $final = '';
+        while (1) {
+            $final .= $this->parseValue($string, $x, ['|']);
+            $x++;
+            if (($string[$x] ?? '') === '|') {
+                $final .= '||';
+                $x++;
+            } else {
+                break;
+            }
+        }
+        
 
-                $parts = explode(":", $expression);
-
-                $value = array_shift($parts);
-                $value = ltrim($value, "@");
-
-                foreach ($parts as &$part) {
-                    $part = $this->sanitizeValue($part);
+        $state = self::STATE_FILTER;
+        $filter_name = '';
+        $filter_args = [];
+        for (; $x < strlen($string); $x++) {
+            $cur = $string[$x];
+            if ($state === self::STATE_ARGS) {
+                $filter_args []= $this->sanitizeValue($this->parseValue($string, $x, [',', '|']));
+                if (($string[$x] ?? '') === '|') {
+                    $final .= '|'.$filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
+                    $filter_name = '';
+                    $filter_args = [];
+                    $state = self::STATE_FILTER;
                 }
-
-                $convertedFilterName = FilterNameMap::getConvertedFilterName($value);
-
-                return "|$convertedFilterName" . (!empty($parts) ? ("(" . implode(", ", $parts) . ")") : "");
-            },
-            $string
-        );
+            } elseif ($state === self::STATE_FILTER) {
+                if ($cur === ':') {
+                    $state = self::STATE_ARGS;
+                } elseif ($cur === '|') {
+                    $final .= '|'.$filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
+                    $filter_name = '';
+                    $filter_args = [];
+                    $state = self::STATE_FILTER;
+                } else {
+                    $filter_name .= $cur;
+                }
+            } else {
+                throw new AssertionError("Unreachable!");
+            }
+        }
+        if (trim($filter_name) !== '') {
+            $final .= '|'.$filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
+        }
+        //var_dump($string, $final);
+        return $final;
     }
 
     /**
