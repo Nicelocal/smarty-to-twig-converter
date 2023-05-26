@@ -322,6 +322,7 @@ abstract class ConverterAbstract
         $string = $this->convertFunctionArguments($string);
         $string = $this->convertArrayKey($string);
         $string = $this->convertFilters($string);
+        $string = $this->convertIdentical($string);
 
         return $string;
     }
@@ -418,6 +419,24 @@ abstract class ConverterAbstract
         //var_dump($string, $final);
         return $final;
     }
+    private function convertIdentical(string $expression): string
+    {
+        $final = [];
+        $prev = '';
+        for ($x = 0; $x < strlen($expression); $x++) {
+            $cur = $this->parseValue($expression, $x, [' ']);
+            if ($prev === '===') {
+                $final []= "is same as($cur)";
+            } elseif ($prev === '!==') {
+                $final []= "is not same as($cur)";
+            } elseif ($cur !== '===' && $cur !== '!==') {
+                $final []= $cur;
+            }
+
+            $prev = $cur;
+        }
+        return implode(' ', $final);
+    }
 
     /**
      * Explodes expression to parts to converts them separately
@@ -437,21 +456,7 @@ abstract class ConverterAbstract
 
         $expression = $this->splitSanitize($expression);
 
-        $final = [];
-        $prev = '';
-        for ($x = 0; $x < strlen($expression); $x++) {
-            $cur = $this->parseValue($expression, $x, [' ']);
-            if ($prev === '===') {
-                $final []= "is same as($cur)";
-            } elseif ($prev === '!==') {
-                $final []= "is not same as($cur)";
-            } elseif ($cur !== '===' && $cur !== '!==') {
-                $final []= $cur;
-            }
-
-            $prev = $cur;
-        }
-        return implode(' ', $final);
+        return $this->convertIdentical($expression);
     }
 
     /**
