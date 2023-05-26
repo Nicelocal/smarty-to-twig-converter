@@ -232,10 +232,10 @@ abstract class ConverterAbstract
                 if (in_array($cur, ['"', "'"])) {
                     $value .= $cur;
                     $stack []= $cur;
-                } elseif ($cur === '[' && !$has_delim) {
+                } elseif ($cur === '[' && (!$has_delim || $stack)) {
                     $value .= $cur;
                     $stack []= ']';
-                } elseif ($cur === '(' && !$has_delim) {
+                } elseif ($cur === '(' && (!$has_delim || $stack)) {
                     $value .= $cur;
                     $stack []= ')';
                 } elseif ($has_delim && !$stack && (trim($value) !== '' || !$x)) {
@@ -387,7 +387,10 @@ abstract class ConverterAbstract
         for (; $x < strlen($string); $x++) {
             $cur = $string[$x];
             if ($state === self::STATE_ARGS) {
-                $filter_args []= $this->sanitizeValue($this->parseValue($string, $x, [',', ':', '|']));
+                $filter_args []= $this->sanitizeExpression($this->parseValue($string, $x, [',', ':', ')', '|']));
+                if (($string[$x] ?? '') === ')') {
+                    $x++;
+                }
                 if (($string[$x] ?? '') === '|') {
                     $final .= '|'.$filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
                     $filter_name = '';
@@ -395,7 +398,7 @@ abstract class ConverterAbstract
                     $state = self::STATE_FILTER;
                 }
             } elseif ($state === self::STATE_FILTER) {
-                if ($cur === ':') {
+                if ($cur === ':' || $cur === '(') {
                     $state = self::STATE_ARGS;
                 } elseif ($cur === '|') {
                     $final .= '|'.$filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
@@ -493,7 +496,7 @@ abstract class ConverterAbstract
             if (in_array($key, $skippedKeys)) {
                 continue;
             }
-            $pairs[] = $this->sanitizeVariableName($key) . ": " . $this->sanitizeValue($value);
+            $pairs[] = $this->sanitizeVariableName($key) . ": " . $this->sanitizeExpression($value);
         }
 
         // If array is empty, return nothing
@@ -538,7 +541,7 @@ abstract class ConverterAbstract
     {
         $vars = [];
         foreach ($attr as $key => $value) {
-            $vars[] = $this->sanitizeVariableName($key) . ": " . $this->sanitizeValue($value);
+            $vars[] = $this->sanitizeVariableName($key) . ": " . $this->sanitizeExpression($value);
         }
 
         return '{' . implode(', ', $vars) . '}';
