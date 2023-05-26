@@ -157,7 +157,7 @@ abstract class ConverterAbstract
         '>=',
         '<=',
         '>',
-        '<'
+        '<',
     ];
 
     private function splitSanitize(string $string, int $idx = 0): string {
@@ -177,14 +177,14 @@ abstract class ConverterAbstract
         }
         return implode($delimNew, array_map(fn ($v) => $this->splitSanitize($v, $idx+1), $this->splitParsing($string, $delim)));
     }
-    private function splitParsing(string $string, string $delim): array {
+    protected function splitParsing(string $string, string $delim): array {
         $final = [];
         for ($x = 0; $x < strlen($string); $x++) {
             $final []= $this->parseValue($string, $x, [$delim]);
         }
         return $final;
     }
-    private function parseValue(string $string, int &$x, array $delim): string {
+    protected function parseValue(string $string, int &$x, array $delim): string {
         $stack = [];
         $value = '';
         for (; $x < strlen($string); $x++) {
