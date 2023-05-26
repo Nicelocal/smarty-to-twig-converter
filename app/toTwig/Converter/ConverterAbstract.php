@@ -140,12 +140,42 @@ abstract class ConverterAbstract
 
         return $pairs;
     }
-    private function splitSanitize(string $string, array $delims): string {
-        if (!$delims) {
+
+    private const TOKENS = [
+        ' ',
+        '+',
+        '?:',
+        '??',
+        '*',
+        '/',
+        '%',
+        '===',
+        '==',
+        '&&',
+        '||',
+        '-',
+        '>=',
+        '<=',
+        '>',
+        '<'
+    ];
+
+    private function splitSanitize(string $string, int $idx = 0): string {
+        if ($idx === count(self::TOKENS)) {
             return $this->sanitizeValue($string);
         }
-        $delim = array_pop($delims);
-        return implode($this->sanitizeValue($delim) ?: $delim, array_map(fn ($v) => $this->splitSanitize($v, $delims), $this->splitParsing($string, $delim)));
+        $delim = self::TOKENS[$idx];
+        if ($string === '===' && $delim === '==') {
+            return $string;
+        }
+        if ($string === '->') {
+            return $string;
+        }
+        $delimNew = $this->sanitizeValue($delim) ?: $delim;
+        if ($delimNew !== ' ') {
+            $delimNew = " $delimNew ";
+        }
+        return implode($delimNew, array_map(fn ($v) => $this->splitSanitize($v, $idx+1), $this->splitParsing($string, $delim)));
     }
     private function splitParsing(string $string, string $delim): array {
         $final = [];
@@ -166,29 +196,30 @@ abstract class ConverterAbstract
             } elseif ($prev === '\\') {
                 $value .= $cur;
             } else {
+                $has_delim = false;
+                foreach ($delim as $d) {
+                    if (substr($string, $x, strlen($d)) === $d
+                        && !($d === '-' && substr($string, $x, 2) === '->')
+                        && !($d === '>' && substr($string, $x-1, 2) === '->')
+                    ) {
+                        $has_delim = true;
+                        break;
+                    }
+                }
                 if (in_array($cur, ['"', "'"])) {
                     $value .= $cur;
                     $stack []= $cur;
                 } elseif ($cur === '[') {
                     $value .= $cur;
                     $stack []= ']';
-                } elseif ($cur === '(') {
+                } elseif ($cur === '(' && !$has_delim) {
                     $value .= $cur;
                     $stack []= ')';
-                } else{
-                    $has_delim = false;
-                    foreach ($delim as $d) {
-                        if (substr($string, $x, strlen($d)) === $d) {
-                            $has_delim = true;
-                            break;
-                        }
-                    }
-                    if ($has_delim && !$stack && trim($value) !== '') {
-                        $x += strlen($d)-1;
-                        return trim($value);
-                    } else {
-                        $value .= $cur;
-                    }
+                } elseif ($has_delim && !$stack && trim($value) !== '') {
+                    $x += strlen($d)-1;
+                    return trim($value);
+                } else {
+                    $value .= $cur;
                 }
             }
         }
@@ -232,7 +263,6 @@ abstract class ConverterAbstract
             case 'lt':
                 return '<';
 
-            // '===' is converted separately by IdenticalComparisonConverter
             case 'eq':
                 return '==';
 
@@ -284,16 +314,14 @@ abstract class ConverterAbstract
      */
     private function convertFunctionArguments(string $string): string
     {
-        return preg_replace_callback(
-            "/\([^)]*\)/",
-            function ($matches) {
-                $expression = $matches[0];
-                $expression = rtrim(ltrim($expression, "("), ")");
-
-                return '('.$this->splitSanitize($expression, [',']).')';
-            },
-            $string
-        );
+        $x = 0;
+        $final = $this->parseValue($string, $x, ['(']);
+        $final .= $string[$x++] ?? '';
+        while ($x < strlen($string)) {
+            $final .= $this->convertExpression($this->parseValue($string, $x, [',', ')']));
+            $final .= $string[$x++] ?? '';
+        }
+        return $final;
     }
 
     private const STATE_FILTER = 0;
@@ -371,15 +399,21 @@ abstract class ConverterAbstract
     {
         $expression = $this->convertFilters($expression);
 
-        $expression = preg_replace_callback(
-            "/(\S+)(\+|-(?!>)|\?:|\*|\/|%|&&|\|\|)(\S+)/",
-            function ($matches) {
-                return $matches[1] . " " . $matches[2] . " " . $matches[3];
-            },
-            $expression
-        );
+        $expression = $this->splitSanitize($expression);
 
-        return $this->splitSanitize($expression, [' ']);
+        $final = [];
+        $prev = '';
+        for ($x = 0; $x < strlen($expression); $x++) {
+            $cur = $this->parseValue($expression, $x, [' ']);
+            if ($prev === '===') {
+                $final []= "is same as($cur)";
+            } elseif ($cur !== '===') {
+                $final []= $cur;
+            }
+
+            $prev = $cur;
+        }
+        return implode(' ', $final);
     }
 
     /**
@@ -392,9 +426,8 @@ abstract class ConverterAbstract
      */
     protected function replaceNamedArguments(string $string, array $args): string
     {
-        $pattern = '/:([a-zA-Z0-9_-]+)/';
         $string = preg_replace_callback(
-            $pattern,
+            '/:([a-zA-Z0-9_-]+)/',
             function ($matches) use ($args) {
                 if (isset($args[$matches[1]])) {
                     return str_replace($matches[0], $args[$matches[1]], $matches[0]);
