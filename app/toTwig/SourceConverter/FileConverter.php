@@ -74,7 +74,7 @@ class FileConverter extends SourceConverter
         $changed = [];
 
         $conversionResult = $this->convertTemplate(file_get_contents($file->getRealpath()), $diff, $converters);
-        if ($conversionResult->hasAppliedConverters()) {
+        if ($conversionResult->hasAppliedConverters() || true) {
             if (!$dryRun) {
                 $filename = $this->getConvertedFilename($file);
 

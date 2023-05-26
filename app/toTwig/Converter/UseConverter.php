@@ -18,7 +18,7 @@ class UseConverter extends ConverterAbstract
 {
     protected string $name = 'use';
     protected string $description = 'Convert smarty use/useif to twig';
-    protected int $priority = 50;
+    protected int $priority = 100;
 
     public function convert(string $content): string
     {
@@ -27,7 +27,7 @@ class UseConverter extends ConverterAbstract
         // Replace smarty {/if} to its twig analogue
         $content = preg_replace($this->getClosingTagPattern('useif'), "{% endif %}", $content);
         // Remove smarty {/use}
-        $content = preg_replace($this->getOpeningTagPattern('use'), '', $content);
+        $content = preg_replace($this->getClosingTagPattern('use'), '', $content);
 
         return $content;
     }
@@ -37,7 +37,7 @@ class UseConverter extends ConverterAbstract
             $pattern,
             function ($matches) use ($addIf) {
                 [$value, $key] = $this->splitParsing($matches[1], 'as');
-                $value = $this->sanitizeValue($value);
+                $value = $this->sanitizeExpression($value);
 
                 $keys = explode(',', $key);
                 if (count($keys) === 1) {

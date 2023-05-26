@@ -53,9 +53,9 @@ class BlockConverter extends ConverterAbstract
     private function getSanitizedName(array $attr): string
     {
         if (isset($attr['name'])) {
-            $name = $this->sanitizeValue($attr['name']);
+            $name = $this->sanitizeExpression($attr['name']);
         } else {
-            $name = $this->sanitizeValue(array_shift($attr));
+            $name = $this->sanitizeExpression(array_shift($attr));
         }
 
         return $name;
@@ -79,7 +79,7 @@ class BlockConverter extends ConverterAbstract
             $pattern,
             function ($matches) {
                 $attr = $this->getAttributes($matches);
-                $file = $this->sanitizeValue(reset($attr));
+                $file = $this->sanitizeExpression(reset($attr));
                 $file = $this->convertFileExtension($file);
 
                 return sprintf("{%% extends %s %%}", $file);

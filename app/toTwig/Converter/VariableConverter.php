@@ -28,7 +28,10 @@ class VariableConverter extends ConverterAbstract
             $pattern,
             function ($matches) {
                 $search = $matches[0];
-                $match = $this->convertExpression($matches[1]);
+                if (ltrim($matches[1])[0] === '/') {
+                    return $search;
+                }
+                $match = $this->sanitizeExpression($matches[1]);
                 return str_replace($search, '{{ ' . $match . ' }}', $search);
             },
             $content

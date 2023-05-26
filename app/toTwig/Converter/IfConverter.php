@@ -65,7 +65,7 @@ class IfConverter extends ConverterAbstract
             function ($matches) use ($string) {
                 $match = $matches[1] ?? '';
                 $search = $matches[0];
-                $match = $this->convertExpression($match);
+                $match = $this->sanitizeExpression($match);
                 $string = sprintf($string, $match);
 
                 return str_replace($search, $string, $search);

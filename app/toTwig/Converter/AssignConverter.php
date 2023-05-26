@@ -48,7 +48,7 @@ class AssignConverter extends ConverterAbstract
                 }
 
                 $key = $this->sanitizeVariableName($key);
-                $value = $this->sanitizeValue($value);
+                $value = $this->sanitizeExpression($value);
                 $string = $this->replaceNamedArguments($string, ['key' => $key, 'value' => $value]);
 
                 return str_replace($matches[0], $string, $matches[0]);

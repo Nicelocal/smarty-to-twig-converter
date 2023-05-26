@@ -154,6 +154,7 @@ abstract class ConverterAbstract
         '&&',
         '||',
         '-',
+        '=>',
         '>=',
         '<=',
         '>',
@@ -181,6 +182,9 @@ abstract class ConverterAbstract
         if ($string === '->') {
             return $string;
         }
+        if ($string === '=>') {
+            return $string;
+        }
         if ($string === '?:') {
             return $string;
         }
@@ -203,7 +207,7 @@ abstract class ConverterAbstract
         }
         return $final;
     }
-    protected function parseValue(string $string, int &$x, array $delim): string {
+    private function parseValue(string $string, int &$x, array $delim): string {
         $stack = [];
         $value = '';
         for (; $x < strlen($string); $x++) {
@@ -228,13 +232,13 @@ abstract class ConverterAbstract
                 if (in_array($cur, ['"', "'"])) {
                     $value .= $cur;
                     $stack []= $cur;
-                } elseif ($cur === '[') {
+                } elseif ($cur === '[' && !$has_delim) {
                     $value .= $cur;
                     $stack []= ']';
                 } elseif ($cur === '(' && !$has_delim) {
                     $value .= $cur;
                     $stack []= ')';
-                } elseif ($has_delim && !$stack && trim($value) !== '') {
+                } elseif ($has_delim && !$stack && (trim($value) !== '' || !$x)) {
                     $x += strlen($d)-1;
                     return trim($value);
                 } else {
@@ -253,10 +257,7 @@ abstract class ConverterAbstract
         return trim(trim($string), '$"\'');
     }
 
-    /**
-     * Sanitize value, remove $,' or " from string
-     */
-    protected function sanitizeValue(string $string): string
+    private function sanitizeValue(string $string): string
     {
         $string = trim($string);
 
@@ -307,18 +308,19 @@ abstract class ConverterAbstract
 
         // Handle "($var"
         if ($string[0] == "(") {
-            return "(" . $this->convertExpression(ltrim($string, "("));
+            return "(" . $this->sanitizeExpression(ltrim($string, "("));
         }
 
         // Handle "!$var"
         if (preg_match("/(?<=[(\\s]|^)!(?!=)(?=[$]?\\w*)/", $string)) {
-            return "not " . $this->sanitizeValue(ltrim($string, "!"));
+            return "not " . $this->sanitizeExpression(ltrim($string, "!"));
         }
 
         $string = ltrim($string, '$');
         $string = str_replace("->", ".", $string);
 
         $string = $this->convertFunctionArguments($string);
+        $string = $this->convertArrayKey($string);
         $string = $this->convertFilters($string);
 
         return $string;
@@ -336,7 +338,20 @@ abstract class ConverterAbstract
         $final = $this->parseValue($string, $x, ['(']);
         $final .= $string[$x++] ?? '';
         while ($x < strlen($string)) {
-            $final .= $this->convertExpression($this->parseValue($string, $x, [',', ')']));
+            $final .= $this->sanitizeExpression($this->parseValue($string, $x, [',', ')']));
+            $final .= $string[$x++] ?? '';
+        }
+        return $final;
+    }
+
+
+    private function convertArrayKey(string $string): string
+    {
+        $x = 0;
+        $final = $this->parseValue($string, $x, ['[']);
+        $final .= $string[$x++] ?? '';
+        while ($x < strlen($string)) {
+            $final .= $this->sanitizeExpression($this->parseValue($string, $x, [']']));
             $final .= $string[$x++] ?? '';
         }
         return $final;
@@ -413,7 +428,7 @@ abstract class ConverterAbstract
      *   $matches[2] should contain a string with one of following characters: +, -, >, <, *, /, %, &&, ||
      *   $matches[3] should contain a string with second part of an expression i.e. $b
      */
-    protected function convertExpression(string $expression): string
+    protected function sanitizeExpression(string $expression): string
     {
         $expression = $this->convertFilters($expression);
 

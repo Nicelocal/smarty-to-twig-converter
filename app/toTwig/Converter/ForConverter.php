@@ -74,7 +74,7 @@ class ForConverter extends ConverterAbstract
                 } else {
                     $replace = $this->getReplaceArgumentsForSmarty2($matches);
                 }
-                $replace['from'] = $this->sanitizeValue($replace['from']);
+                $replace['from'] = $this->sanitizeExpression($replace['from']);
                 $string = $this->replaceNamedArguments($string, $replace);
 
                 return str_replace($search, $string, $search);

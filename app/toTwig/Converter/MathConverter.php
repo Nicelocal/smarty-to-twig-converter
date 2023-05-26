@@ -88,7 +88,7 @@ class MathConverter extends ConverterAbstract
             $pattern,
             function ($matches) use ($args) {
                 if (isset($args[$matches[1]])) {
-                    $replace = $this->sanitizeValue($args[$matches[1]]);
+                    $replace = $this->sanitizeExpression($args[$matches[1]]);
 
                     return str_replace($matches[0], $replace, $matches[0]);
                 } else {

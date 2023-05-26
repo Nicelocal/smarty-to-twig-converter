@@ -64,7 +64,7 @@ class NewBasketItemConverter extends ConverterAbstract
 
                     $vars = [];
                     foreach ($attr as $key => $value) {
-                        $valueWithConvertedFileExtension = $this->convertFileExtension($this->sanitizeValue($value));
+                        $valueWithConvertedFileExtension = $this->convertFileExtension($this->sanitizeExpression($value));
                         $vars[] = $this->sanitizeVariableName($key) . ": " . $valueWithConvertedFileExtension;
                     }
 
