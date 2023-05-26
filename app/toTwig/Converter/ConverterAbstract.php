@@ -158,6 +158,10 @@ abstract class ConverterAbstract
         '<=',
         '>',
         '<',
+        '!==',
+        '!=',
+        '?',
+        ':',
     ];
 
     private function splitSanitize(string $string, int $idx = 0): string {
@@ -168,12 +172,24 @@ abstract class ConverterAbstract
         if ($string === '===' && $delim === '==') {
             return $string;
         }
+        if ($string === '!==' && $delim === '==') {
+            return $string;
+        }
+        if ($string === '!==' && $delim === '!=') {
+            return $string;
+        }
         if ($string === '->') {
+            return $string;
+        }
+        if ($string === '?:') {
             return $string;
         }
         $delimNew = $this->sanitizeValue($delim) ?: $delim;
         if ($delimNew !== ' ') {
             $delimNew = " $delimNew ";
+        }
+        if (!str_contains($string, $delim)) {
+            return $this->splitSanitize($string, $idx+1);
         }
         return implode($delimNew, array_map(fn ($v) => $this->splitSanitize($v, $idx+1), $this->splitParsing($string, $delim)));
     }
@@ -181,6 +197,9 @@ abstract class ConverterAbstract
         $final = [];
         for ($x = 0; $x < strlen($string); $x++) {
             $final []= $this->parseValue($string, $x, [$delim]);
+            if ($x === strlen($string)-1) {
+                $final []= '';
+            }
         }
         return $final;
     }
@@ -268,7 +287,6 @@ abstract class ConverterAbstract
 
             case 'ne':
             case 'neq':
-            case '!==':
                 return '!=';
 
             case 'gte':
@@ -407,7 +425,9 @@ abstract class ConverterAbstract
             $cur = $this->parseValue($expression, $x, [' ']);
             if ($prev === '===') {
                 $final []= "is same as($cur)";
-            } elseif ($cur !== '===') {
+            } elseif ($prev === '!==') {
+                $final []= "is not same as($cur)";
+            } elseif ($cur !== '===' && $cur !== '!==') {
                 $final []= $cur;
             }
 
