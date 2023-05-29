@@ -14,6 +14,9 @@ namespace toTwig\SourceConverter;
 use SebastianBergmann\Diff\Differ;
 use toTwig\ConversionResult;
 use toTwig\Converter\ConverterAbstract;
+use toTwig\SourceConverter\Token\TokenComment;
+use toTwig\SourceConverter\Token\TokenHtml;
+use toTwig\SourceConverter\Token\TokenTag;
 
 /**
  * Class SourceConverter
@@ -48,25 +51,34 @@ abstract class SourceConverter
      */
     protected function convertTemplate(string $templateToConvert, bool $diff, array $converters): ConversionResult
     {
-        $convertedTemplate = $templateToConvert;
         $result = new ConversionResult();
         $result->setOriginalTemplate($templateToConvert);
 
-        foreach ($converters as $converter) {
-            $new1 = $converter->convert($convertedTemplate);
-            if ($new1 != $convertedTemplate) {
-                $result->addAppliedConverter($converter->getName());
-            }
-            $convertedTemplate = $new1;
-        }
+        $final = $this->convertInner($templateToConvert, $converters);
+        $result->setConvertedTemplate($final);
 
-        $result->setConvertedTemplate($convertedTemplate);
-
-        if ($diff) {
-            $result->setDiff($this->stringDiff($templateToConvert, $convertedTemplate));
+        if ($templateToConvert !== $final) {
+            $result->setDiff($this->stringDiff($templateToConvert, $final));
         }
 
         return $result;
+    }
+    private function convertInner(string $in, array $converters): string {
+        $tokenizer = new Tokenizer($in);
+        $final = '';
+        while ($token = $tokenizer->next()) {
+            if ($token instanceof TokenHtml) {
+                $final .= (string) $token;
+            } elseif ($token instanceof TokenComment) {
+                $final .= (string) $token;
+            } elseif ($token instanceof TokenTag) {
+                foreach ($converters as $converter) {
+                    $token = $token->replace($converter->convert($token->content));
+                }
+                $final .= (string) $token;
+            }
+        }
+        return $final;
     }
 
     protected function stringDiff(string $old, string $new): string

@@ -226,7 +226,7 @@ abstract class ConverterAbstract
         }
         return $final;
     }
-    private function parseValue(string $string, int &$x, array $delim): string {
+    protected function parseValue(string $string, int &$x, array $delim): string {
         $stack = [];
         $value = '';
         for (; $x < strlen($string); $x++) {
