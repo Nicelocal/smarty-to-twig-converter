@@ -162,6 +162,8 @@ abstract class ConverterAbstract
         '!=',
         '?',
         ':',
+        '.',
+        '->'
     ];
 
     private function splitSanitize(string $string, int $idx = 0): string {
@@ -194,7 +196,25 @@ abstract class ConverterAbstract
         if (!str_contains($string, $delim)) {
             return $this->splitSanitize($string, $idx+1);
         }
-        return implode($delimNew, array_map(fn ($v) => $this->splitSanitize($v, $idx+1), $this->splitParsing($string, $delim)));
+        $split = $this->splitParsing($string, $delim);
+        if ($delim === '.' && count($split) > 1) {
+            $has_string = false;
+            foreach ($split as $v) {
+                if (in_array(trim($v)[0] ?? '', ['"', "'"], true)) {
+                    $has_string = true;
+                    break;
+                }
+            }
+            if ($has_string) {
+                $delimNew = ' ~ ';
+            } else {
+                return $this->splitSanitize(implode('.', $split), $idx+1);
+            }
+        }
+        if ($delim === '->') {
+            return $this->splitSanitize(implode('.', $split), $idx+1);
+        }
+        return implode($delimNew, array_map(fn ($v) => $this->splitSanitize($v, $idx+1), $split));
     }
     protected function splitParsing(string $string, string $delim): array {
         $final = [];
@@ -211,12 +231,9 @@ abstract class ConverterAbstract
         $value = '';
         for (; $x < strlen($string); $x++) {
             $cur = $string[$x];
-            $prev = $string[$x-1] ?? '';
             if (end($stack) === $cur) {
                 $value .= $cur;
                 array_pop($stack);
-            } elseif ($prev === '\\') {
-                $value .= $cur;
             } else {
                 $has_delim = false;
                 foreach ($delim as $d) {
@@ -229,12 +246,18 @@ abstract class ConverterAbstract
                     }
                 }
                 if (in_array($cur, ['"', "'"])) {
-                    $value .= $cur;
-                    $stack []= $cur;
-                } elseif ($cur === '[' && (!$has_delim || $stack)) {
+                    $start = $x;
+                    $x++;
+                    for (; $x < strlen($string); $x++) {
+                        if ($string[$x] === $cur && $string[$x-1] !== '\\') {
+                            break;
+                        }
+                    }
+                    $value .= substr($string, $start, ($x-$start)+1);
+                } elseif ($cur === '[' && !$has_delim) {
                     $value .= $cur;
                     $stack []= ']';
-                } elseif ($cur === '(' && (!$has_delim || $stack)) {
+                } elseif ($cur === '(' && !$has_delim) {
                     $value .= $cur;
                     $stack []= ')';
                 } elseif ($has_delim && !$stack && (trim($value) !== '' || !$x)) {
@@ -296,6 +319,9 @@ abstract class ConverterAbstract
             case 'lte':
             case 'le':
                 return '<=';
+
+            case '->':
+                return '.';
         }
 
         // Handle non-quoted strings
@@ -316,7 +342,6 @@ abstract class ConverterAbstract
         }
 
         $string = ltrim($string, '$');
-        $string = str_replace("->", ".", $string);
 
         $string = $this->convertFunctionArguments($string);
         $string = $this->convertArrayKey($string);
