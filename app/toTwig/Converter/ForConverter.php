@@ -32,6 +32,8 @@ class ForConverter extends ConverterAbstract
     public function convert(string $content): string
     {
         $content = $this->replaceFor($content);
+        $content = $this->replaceEndFor($content);
+        $content = $this->replaceForEach($content);
         $content = $this->replaceEndForEach($content);
         $content = $this->replaceForEachElse($content);
 
@@ -50,6 +52,14 @@ class ForConverter extends ConverterAbstract
         return preg_replace($search, $replace, $content);
     }
 
+    private function replaceEndFor(string $content): string
+    {
+        $search = $this->getClosingTagPattern('for');
+        $replace = "{% endfor %}";
+
+        return preg_replace($search, $replace, $content);
+    }
+
     private function replaceForEachElse(string $content): string
     {
         $search = $this->getOpeningTagPattern('foreachelse');
@@ -58,7 +68,7 @@ class ForConverter extends ConverterAbstract
         return preg_replace($search, $replace, $content);
     }
 
-    private function replaceFor(string $content): string
+    private function replaceForEach(string $content): string
     {
         $pattern = $this->getOpeningTagPattern('foreach');
         $string = '{% for :key :item in :from %}';
@@ -76,6 +86,29 @@ class ForConverter extends ConverterAbstract
                 }
                 $replace['from'] = $this->sanitizeExpression($replace['from']);
                 $string = $this->replaceNamedArguments($string, $replace);
+
+                return str_replace($search, $string, $search);
+            },
+            $content
+        );
+    }
+
+    private function replaceFor(string $content): string
+    {
+        $pattern = $this->getOpeningTagPattern('for');
+        $string = '{% for :value in range(:start, :limit, :step) %}';
+
+        return preg_replace_callback(
+            $pattern,
+            function ($matches) use ($string) {
+                $search = $matches[0];
+                $args = $this->extractAttributes($matches[1]);
+
+                $args['value'] = $this->sanitizeVariableName($args['value']);
+                $args['limit'] = $args['loop']-1;
+                $args['step'] ??= 1;
+                $args['start'] ??= 0;
+                $string = $this->replaceNamedArguments($string, $args);
 
                 return str_replace($search, $string, $search);
             },

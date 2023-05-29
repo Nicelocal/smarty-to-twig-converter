@@ -145,7 +145,6 @@ abstract class ConverterAbstract
         ' ',
         '+',
         '?:',
-        '??',
         '*',
         '/',
         '%',
