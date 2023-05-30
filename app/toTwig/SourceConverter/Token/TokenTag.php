@@ -27,6 +27,7 @@ final class TokenTag extends Token {
         $pos = strpos($this->content, $openTag);
         if ($pos === false
             || trim(substr($this->content, 0, $pos)) !== ''
+            || !in_array(substr($this->content, $pos+strlen($openTag), 1), ['', ' '], true)
         ) {
             return $this;
         }
@@ -46,12 +47,12 @@ final class TokenTag extends Token {
         $pos = strpos($this->content, $closeTag);
         if ($pos === false
             || trim(substr($this->content, 0, $pos)) !== '/'
-            || trim(substr($this->content, $pos)) !== ''
+            || trim(substr($this->content, $pos+strlen($closeTag))) !== ''
         ) {
             return $this;
         }
         if (!$custom) {
-            $replacement = '{%'.$replacement.'%}';
+            $replacement = '{% '.$replacement.' %}';
         }
         return new self($replacement, true);
     }

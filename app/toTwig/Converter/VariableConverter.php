@@ -11,6 +11,7 @@
 
 namespace toTwig\Converter;
 
+use AssertionError;
 use toTwig\SourceConverter\Token\TokenTag;
 
 /**
@@ -24,13 +25,15 @@ class VariableConverter extends ConverterAbstract
 
     public function convert(TokenTag $content): TokenTag
     {
-        return $content->replaceOpenTag(
-            '',
-            function ($args) {
-                $match = $this->sanitizeExpression($args);
-                return '{{ ' . $match . ' }}';
-            },
-            $content
+        if ($content->converted) {
+            return $content;
+        }
+        if (ltrim($content->content)[0] === '/') {
+            throw new AssertionError("Unrecognized close tag ".$content->content);
+        }
+        return new TokenTag(
+            '{{ '.$this->sanitizeExpression($content->content).' }}',
+            true
         );
     }
 }

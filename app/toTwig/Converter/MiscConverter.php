@@ -41,7 +41,7 @@ class MiscConverter extends ConverterAbstract
             $content = $content->replaceOpenTag($in, fn () => $out);
         }
         foreach (self::CLOSE_REPLACE as $in => $out) {
-            $content = $content->replaceCloseTag($in, $out);
+            $content = $content->replaceCloseTag($in, $out, true);
         }
 
         return $content;

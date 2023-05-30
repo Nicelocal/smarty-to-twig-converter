@@ -24,11 +24,11 @@ class ForConverter extends ConverterAbstract
 
     public function convert(TokenTag $content): TokenTag
     {
+        $content = $content->replaceCloseTag('foreach', 'endfor')
+            ->replaceCloseTag('for', 'endfor')
+            ->replaceOpenTag('foreachelse', fn () => '{% else %}');
         $content = $this->replaceForEach($content);
-        $content = $this->replaceEndForEach($content);
         $content = $this->replaceFor($content);
-        $content = $this->replaceEndFor($content);
-        $content = $this->replaceForEachElse($content);
 
         $contentStr = $content->content;
         foreach ([
@@ -41,21 +41,6 @@ class ForConverter extends ConverterAbstract
         }
 
         return new TokenTag($contentStr, $content->converted);
-    }
-
-    private function replaceEndForEach(TokenTag $content): TokenTag
-    {
-        return $content->replaceCloseTag('foreach', 'endfor');
-    }
-
-    private function replaceEndFor(TokenTag $content): TokenTag
-    {
-        return $content->replaceCloseTag('for', 'endfor');
-    }
-
-    private function replaceForEachElse(TokenTag $content): TokenTag
-    {
-        return $content->replaceOpenTag('foreachelse', fn () => '{% else %}');
     }
 
     private function replaceForEach(TokenTag $content): TokenTag

@@ -27,7 +27,8 @@ class IfConverter extends ConverterAbstract
         $content = $this->replace('if', $content);
         $content = $this->replace('elseif', $content);
         return $content->replaceCloseTag('if', 'endif')
-            ->replaceOpenTag('else', fn () => 'else');
+            ->replaceOpenTag('else', fn () => '{% else %}')
+            ->replaceCloseTag('else', '{% else %}', true);
     }
     /**
      * Helper for replacing starting tag patterns with additional checks and
