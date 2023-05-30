@@ -346,13 +346,59 @@ abstract class ConverterAbstract
     private function convertArrayKey(string $string): string
     {
         $x = 0;
-        $final = $this->parseValue($string, $x, ['[']);
-        $final .= $string[$x++] ?? '';
+
+        $chunks = [];
+
+        $prefix = $this->parseValue($string, $x, ['[']);
+        $prefix .= $string[$x++] ?? '';
+
         while ($x < strlen($string)) {
-            $final .= $this->sanitizeExpression($this->parseValue($string, $x, [']']));
-            $final .= $string[$x++] ?? '';
+            $chunk = $this->parseValue($string, $x, [']']);
+
+            $chunks []= [
+                $prefix,
+                $chunk
+            ];
+
+            $prefix = $this->sanitizeExpression($this->parseValue($string, $x, ['[']));
+            $prefix .= $string[$x++] ?? '';
         }
-        return $final;
+
+        if (count($chunks) === 0) {
+            return $prefix;
+        }
+        if (count($chunks) > 1 || $chunks[0][0][0] !== '[') {
+            $final = '';
+            foreach ($chunks as [$prefix, $chunk]) {
+                $prefix = trim($prefix, '[]');
+                $chunk = $this->sanitizeExpression($chunk);
+                $final .= $prefix."[$chunk]";
+            }
+            return $final;
+        }
+        return $this->parseArrayKeyValue($chunks[0][1]);
+    }
+
+    private function parseArrayKeyValue(string $string): string
+    {
+        $x = 0;
+        $k = 0;
+        $arr = [];
+        while ($x < strlen($string)) {
+            $key = $this->parseValue($string, $x, ['=>', ',', ']']);
+            $cur = $string[$x++] ?? '';
+            if ($cur === '>') {
+                $value = $this->parseValue($string, $x, [',', ']']);
+                $x++;
+            } elseif ($cur === ',' || $cur === ']' || $cur === '') {
+                $value = $key;
+                $key = $k++;
+            } else {
+                throw new AssertionError('Unreachable');
+            }
+            $arr []= "$key: $value";
+        }
+        return '{'.implode(', ', $arr).'}';
     }
 
     private const STATE_FILTER = 0;
