@@ -362,6 +362,8 @@ abstract class ConverterAbstract
 
             $prefix = $this->sanitizeExpression($this->parseValue($string, $x, ['[']));
             $prefix .= $string[$x++] ?? '';
+
+            $postfix = trim($prefix, '[]');
         }
 
         if (count($chunks) === 0) {
@@ -374,9 +376,9 @@ abstract class ConverterAbstract
                 $chunk = $this->sanitizeExpression($chunk);
                 $final .= $prefix."[$chunk]";
             }
-            return $final.$prefix;
+            return $final.$postfix;
         }
-        return $this->parseArrayKeyValue($chunks[0][1]).$prefix;
+        return $this->parseArrayKeyValue($chunks[0][1]).$postfix;
     }
 
     private function parseArrayKeyValue(string $string): string
@@ -397,6 +399,9 @@ abstract class ConverterAbstract
                 throw new AssertionError('Unreachable');
             }
             $arr []= "$key: $value";
+        }
+        if (!$arr) {
+            return '{}';
         }
         return '{'.implode(', ', $arr).'}';
     }
@@ -424,6 +429,16 @@ abstract class ConverterAbstract
             }
         }
         
+        $append_filter = function (string &$filter_name, array &$filter_args) use (&$final) {
+            $filter_name = ltrim($filter_name, '@');
+            $filter_name = match ($filter_name) {
+                'esc' => 'escape',
+                default => $filter_name
+            };
+            $final .= '|'.$filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
+            $filter_name = '';
+            $filter_args = [];
+        };
 
         $state = self::STATE_FILTER;
         $filter_name = '';
@@ -436,18 +451,14 @@ abstract class ConverterAbstract
                     $x++;
                 }
                 if (($string[$x] ?? '') === '|') {
-                    $final .= '|'.$filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
-                    $filter_name = '';
-                    $filter_args = [];
+                    $append_filter($filter_name, $filter_args);
                     $state = self::STATE_FILTER;
                 }
             } elseif ($state === self::STATE_FILTER) {
                 if ($cur === ':' || $cur === '(') {
                     $state = self::STATE_ARGS;
                 } elseif ($cur === '|') {
-                    $final .= '|'.$filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
-                    $filter_name = '';
-                    $filter_args = [];
+                    $append_filter($filter_name, $filter_args);
                     $state = self::STATE_FILTER;
                 } else {
                     $filter_name .= $cur;
@@ -457,7 +468,7 @@ abstract class ConverterAbstract
             }
         }
         if (trim($filter_name) !== '') {
-            $final .= '|'.$filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
+            $append_filter($filter_name, $filter_args);
         }
         //var_dump($string, $final);
         return $final;
