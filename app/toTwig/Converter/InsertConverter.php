@@ -16,18 +16,4 @@ class InsertConverter extends IncludeConverter
 
     protected string $string = '{% include :template :with :vars %}';
     protected string $attrName = 'name';
-
-    /**
-     * InsertConverter constructor.
-     */
-    public function __construct()
-    {
-        parent::__construct();
-
-        /**
-         * $pattern is supposed to detect structure like this:
-         * [{insert name="oxid_content" ident="foo"}]
-         **/
-        $this->pattern = $this->getOpeningTagPattern('insert');
-    }
 }

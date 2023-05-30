@@ -11,6 +11,8 @@
 
 namespace toTwig\Converter;
 
+use toTwig\SourceConverter\Token\TokenTag;
+
 /**
  * @author sankara <sankar.suda@gmail.com>
  */
@@ -20,19 +22,13 @@ class VariableConverter extends ConverterAbstract
     protected string $description = 'Convert smarty variable {$var.name} to twig {{ var.name }}';
     protected int $priority = 10;
 
-    public function convert(string $content): string
+    public function convert(TokenTag $content): TokenTag
     {
-        $pattern = '#\{\{\s*((?:(?!\{\{|\}\}).(?<!\{\{)(?<!\}\}))+)?\}\}#is';
-
-        return preg_replace_callback(
-            $pattern,
-            function ($matches) {
-                $search = $matches[0];
-                if (ltrim($matches[1])[0] === '/') {
-                    return $search;
-                }
-                $match = $this->sanitizeExpression($matches[1]);
-                return str_replace($search, '{{ ' . $match . ' }}', $search);
+        return $content->replaceOpenTag(
+            '',
+            function ($args) {
+                $match = $this->sanitizeExpression($args);
+                return '{{ ' . $match . ' }}';
             },
             $content
         );

@@ -73,7 +73,7 @@ abstract class SourceConverter
                 $final .= (string) $token;
             } elseif ($token instanceof TokenTag) {
                 foreach ($converters as $converter) {
-                    $token = $token->replace($converter->convert($token->content));
+                    $token = $converter->convert($token);
                 }
                 $final .= (string) $token;
             }

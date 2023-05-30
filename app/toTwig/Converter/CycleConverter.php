@@ -6,6 +6,8 @@
 
 namespace toTwig\Converter;
 
+use toTwig\SourceConverter\Token\TokenTag;
+
 /**
  * Class CycleConverter
  */
@@ -15,15 +17,11 @@ class CycleConverter extends ConverterAbstract
     protected string $description = "Convert smarty {cycle} to twig function {{ smarty_cycle() }}";
     protected int $priority = 100;
 
-    public function convert(string $content): string
+    public function convert(TokenTag $content): TokenTag
     {
-        $pattern = $this->getOpeningTagPattern('cycle');
-
-        return preg_replace_callback(
-            $pattern,
-            function ($matches) {
-                // If short form [{cycle}] - attributes are empty
-                $match = isset($matches[1]) ? $matches[1] : "";
+        return $content->replaceOpenTag(
+            'cycle',
+            function ($match) {
                 $attributes = $this->extractAttributes($match);
 
                 // Different approaches for syntax with and without assignment

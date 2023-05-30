@@ -11,6 +11,8 @@
 
 namespace toTwig\Converter;
 
+use toTwig\SourceConverter\Token\TokenTag;
+
 /**
  * @author sankara <sankar.suda@gmail.com>
  */
@@ -22,27 +24,24 @@ class MiscConverter extends ConverterAbstract
 
     // Lookup tables for performing some token
     // replacements not addressed in the grammar.
-    private array $replacements;
+    private const OPEN_REPLACE = [
+        'ldelim' => '',
+        'rdelim' => '',
+        'literal' => '{# literal #}',
+        'strip' => '{% spaceless %}',
+    ];
+    private const CLOSE_REPLACE = [
+        'literal' => '{# /literal #}',
+        'strip' => '{% endspaceless %}',
+    ];
 
-    /**
-     * MiscConverter constructor.
-     */
-    public function __construct()
+    public function convert(TokenTag $content): TokenTag
     {
-        $this->replacements = [
-            $this->getOpeningTagPattern('ldelim') => '',
-            $this->getOpeningTagPattern('rdelim') => '',
-            $this->getOpeningTagPattern('literal') => '{# literal #}',
-            $this->getClosingTagPattern('literal') => '{# /literal #}',
-            $this->getOpeningTagPattern('strip') => '{% spaceless %}',
-            $this->getClosingTagPattern('strip') => '{% endspaceless %}',
-        ];
-    }
-
-    public function convert(string $content): string
-    {
-        foreach ($this->replacements as $k => $v) {
-            $content = preg_replace($k, $v, $content);
+        foreach (self::OPEN_REPLACE as $in => $out) {
+            $content = $content->replaceOpenTag($in, fn () => $out);
+        }
+        foreach (self::CLOSE_REPLACE as $in => $out) {
+            $content = $content->replaceCloseTag($in, $out);
         }
 
         return $content;

@@ -6,6 +6,8 @@
 
 namespace toTwig\Converter;
 
+use toTwig\SourceConverter\Token\TokenTag;
+
 /**
  * Class MathConverter
  */
@@ -15,12 +17,10 @@ class MathConverter extends ConverterAbstract
     protected string $description = "Convert smarty math to twig";
     protected int $priority = 1000;
 
-    public function convert(string $content): string
+    public function convert(TokenTag $content): TokenTag
     {
-        $pattern = $this->getOpeningTagPattern('math');
-
-        return preg_replace_callback(
-            $pattern,
+        return $content->replaceOpenTag(
+            'math',
             function ($matches) {
                 /**
                  * $matches contains an array of strings.
@@ -41,9 +41,7 @@ class MathConverter extends ConverterAbstract
                 $equationTemplate = $this->translateEquationTemplate($attr, $vars);
                 $formattedEquation = $this->mathEquationSprintf($equationTemplate, $vars);
                 $replace['equation'] = $formattedEquation;
-                $string = $this->replaceNamedArguments($string, $replace);
-
-                return str_replace($matches[0], $string, $matches[0]);
+                return $this->replaceNamedArguments($string, $replace);
             },
             $content
         );

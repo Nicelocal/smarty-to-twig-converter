@@ -11,6 +11,8 @@
 
 namespace toTwig\Converter;
 
+use toTwig\SourceConverter\Token\TokenTag;
+
 /**
  * @author sankar <sankar.suda@gmail.com>
  */
@@ -20,97 +22,74 @@ class ForConverter extends ConverterAbstract
     protected string $description = 'Convert foreach/foreachelse to twig';
     protected int $priority = 50;
 
-    // Lookup tables for performing some token
-    // replacements not addressed in the grammar.
-    private array $replacements = [
-        'smarty\.foreach.*\.index' => 'loop.index0',
-        'smarty\.foreach.*\.iteration' => 'loop.index',
-        'smarty\.foreach.*\.first' => 'loop.first',
-        'smarty\.foreach.*\.last' => 'loop.last',
-    ];
-
-    public function convert(string $content): string
+    public function convert(TokenTag $content): TokenTag
     {
-        $content = $this->replaceFor($content);
-        $content = $this->replaceEndFor($content);
         $content = $this->replaceForEach($content);
         $content = $this->replaceEndForEach($content);
+        $content = $this->replaceFor($content);
+        $content = $this->replaceEndFor($content);
         $content = $this->replaceForEachElse($content);
 
-        foreach ($this->replacements as $k => $v) {
-            $content = preg_replace('/' . $k . '/', $v, $content);
+        $contentStr = $content->content;
+        foreach ([
+            'smarty\.foreach.*\.index' => 'loop.index0',
+            'smarty\.foreach.*\.iteration' => 'loop.index',
+            'smarty\.foreach.*\.first' => 'loop.first',
+            'smarty\.foreach.*\.last' => 'loop.last',
+        ] as $k => $v) {
+            $contentStr = preg_replace('/' . $k . '/', $v, $contentStr);
         }
 
-        return $content;
+        return new TokenTag($contentStr, $content->converted);
     }
 
-    private function replaceEndForEach(string $content): string
+    private function replaceEndForEach(TokenTag $content): TokenTag
     {
-        $search = $this->getClosingTagPattern('foreach');
-        $replace = "{% endfor %}";
-
-        return preg_replace($search, $replace, $content);
+        return $content->replaceCloseTag('foreach', 'endfor');
     }
 
-    private function replaceEndFor(string $content): string
+    private function replaceEndFor(TokenTag $content): TokenTag
     {
-        $search = $this->getClosingTagPattern('for');
-        $replace = "{% endfor %}";
-
-        return preg_replace($search, $replace, $content);
+        return $content->replaceCloseTag('for', 'endfor');
     }
 
-    private function replaceForEachElse(string $content): string
+    private function replaceForEachElse(TokenTag $content): TokenTag
     {
-        $search = $this->getOpeningTagPattern('foreachelse');
-        $replace = "{% else %}";
-
-        return preg_replace($search, $replace, $content);
+        return $content->replaceOpenTag('foreachelse', fn () => '{% else %}');
     }
 
-    private function replaceForEach(string $content): string
+    private function replaceForEach(TokenTag $content): TokenTag
     {
-        $pattern = $this->getOpeningTagPattern('foreach');
-        $string = '{% for :key :item in :from %}';
-
-        return preg_replace_callback(
-            $pattern,
-            function ($matches) use ($string) {
-                $match = $matches[1];
-                $search = $matches[0];
-
+        return $content->replaceOpenTag(
+            'foreach',
+            function ($match) {
                 if (preg_match("/(.*)(?:\bas\b)(.*)/i", $match, $mcs)) {
                     $replace = $this->getReplaceArgumentsForSmarty3($mcs);
                 } else {
-                    $replace = $this->getReplaceArgumentsForSmarty2($matches);
+                    $replace = $this->getReplaceArgumentsForSmarty2($match);
                 }
                 $replace['from'] = $this->sanitizeExpression($replace['from']);
-                $string = $this->replaceNamedArguments($string, $replace);
-
-                return str_replace($search, $string, $search);
+                return $this->replaceNamedArguments('{% for :key :item in :from %}', $replace);
             },
             $content
         );
     }
 
-    private function replaceFor(string $content): string
+    private function replaceFor(TokenTag $content): TokenTag
     {
-        $pattern = $this->getOpeningTagPattern('for');
-        $string = '{% for :value in range(:start, :limit, :step) %}';
-
-        return preg_replace_callback(
-            $pattern,
-            function ($matches) use ($string) {
-                $search = $matches[0];
-                $args = $this->extractAttributes($matches[1]);
+        return $content->replaceOpenTag(
+            'for',
+            function ($attrs) {
+                $args = $this->extractAttributes($attrs);
 
                 $args['value'] = $this->sanitizeVariableName($args['value']);
                 $args['limit'] = $args['loop']-1;
                 $args['step'] ??= 1;
                 $args['start'] ??= 0;
-                $string = $this->replaceNamedArguments($string, $args);
-
-                return str_replace($search, $string, $search);
+                return $this->replaceNamedArguments(
+                    '{% for :value in range(:start, :limit, :step) %}',
+                    $args
+                );
             },
             $content
         );
@@ -148,9 +127,9 @@ class ForConverter extends ConverterAbstract
      * For example:
      * {foreach from=$myArray key="myKey" item="myItem"}
      */
-    private function getReplaceArgumentsForSmarty2(array $matches): array
+    private function getReplaceArgumentsForSmarty2(string $match): array
     {
-        $attr = $this->getAttributes($matches);
+        $attr = $this->getAttributes($match);
 
         if (isset($attr['key'])) {
             $replace['key'] = $this->sanitizeVariableName($attr['key']) . ',';

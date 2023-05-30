@@ -82,6 +82,6 @@ final class Tokenizer extends ConverterAbstract
         $content = $this->parseValue($this->content, $this->offset, ['}}']);
         $this->offset++;
         $this->state = self::STATE_HTML;
-        return new TokenTag('{{'.$content.'}}');
+        return new TokenTag($content, false);
     }
 }

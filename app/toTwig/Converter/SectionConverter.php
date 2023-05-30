@@ -6,6 +6,8 @@
 
 namespace toTwig\Converter;
 
+use toTwig\SourceConverter\Token\TokenTag;
+
 /**
  * Class SectionConverter
  */
@@ -27,35 +29,31 @@ class SectionConverter extends ConverterAbstract
     /**
      * Function converts smarty {section} tags to twig {for}
      */
-    public function convert(string $content): string
+    public function convert(TokenTag $content): TokenTag
     {
         $contentReplacedOpeningTag = $this->replaceSectionOpeningTag($content);
         $content = $this->replaceSectionClosingTag($contentReplacedOpeningTag);
 
+        $contentStr = $content->content;
         foreach ($this->replacements as $k => $v) {
-            $content = preg_replace('/' . $k . '/', $v, $content);
+            $contentStr = preg_replace('/' . $k . '/', $v, $contentStr);
         }
 
-        return $content;
+        return new TokenTag($contentStr, $content->converted);
     }
 
     /**
      * Function converts opening tag of smarty {section} to twig {for}
      */
-    private function replaceSectionOpeningTag(string $content): string
+    private function replaceSectionOpeningTag(TokenTag $content): TokenTag
     {
-        $pattern = $this->getOpeningTagPattern('section');
-        $string = '{% for :name in :start..:loop %}';
-
-        return preg_replace_callback(
-            $pattern,
-            function ($matches) use ($string) {
+        return $content->replaceOpenTag(
+            'section',
+            function ($matches) {
                 $replacement = $this->getAttributes($matches);
                 $replacement['start'] = isset($replacement['start']) ? $replacement['start'] : 0;
                 $replacement['name'] = $this->sanitizeVariableName($replacement['name']);
-                $string = $this->replaceNamedArguments($string, $replacement);
-
-                return str_replace($matches[0], $string, $matches[0]);
+                return $this->replaceNamedArguments('{% for :name in :start..:loop %}', $replacement);
             },
             $content
         );
@@ -64,11 +62,8 @@ class SectionConverter extends ConverterAbstract
     /**
      * Function converts closing tag of smarty {section} to twig {for}
      */
-    private function replaceSectionClosingTag(string $content): string
+    private function replaceSectionClosingTag(TokenTag $content): TokenTag
     {
-        $search = $this->getClosingTagPattern('section');
-        $replace = '{% endfor %}';
-
-        return preg_replace($search, $replace, $content);
+        return $content->replaceCloseTag('section', 'endfor');
     }
 }

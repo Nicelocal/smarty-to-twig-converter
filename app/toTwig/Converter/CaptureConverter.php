@@ -6,6 +6,9 @@
 
 namespace toTwig\Converter;
 
+use AssertionError;
+use toTwig\SourceConverter\Token\TokenTag;
+
 /**
  * Class CaptureConverter
  */
@@ -15,11 +18,9 @@ class CaptureConverter extends ConverterAbstract
     protected string $description = 'Converts Smarty Capture into Twig';
     protected int $priority = 100;
 
-    public function convert(string $content): string
+    public function convert(TokenTag $content): TokenTag
     {
-        $pattern = $this->getOpeningTagPattern('capture');
-        $strippedOpeningTag = preg_replace_callback(
-            $pattern,
+        return $content->replaceOpenTag('capture',
             function ($matches) {
                 $attr = $this->getAttributes($matches);
                 if (isset($attr['name'])) {
@@ -32,33 +33,15 @@ class CaptureConverter extends ConverterAbstract
                     $attr['assign'] = $this->sanitizeVariableName($attr['assign']);
                     $string = '{% capture assign = ":assign" %}';
                 } else {
-                    return $matches[0];
+                    throw new AssertionError("Unreachable!");
                 }
 
-                $string = $this->replaceNamedArguments($string, $attr);
-
-                return str_replace($matches[0], $string, $matches[0]);
+                return $this->replaceNamedArguments($string, $attr);
             },
             $content
-        );
-
-        return $this->stripClosingTag($strippedOpeningTag);
-    }
-
-    private function stripClosingTag(string $strippedOpeningTag): string
-    {
-        $pattern = $this->getClosingTagPattern('capture');
-        $string = '{% endcapture %}';
-
-        return preg_replace_callback(
-            $pattern,
-            function ($matches) use ($string) {
-                $attr = $this->getAttributes($matches);
-                $string = $this->replaceNamedArguments($string, $attr);
-
-                return str_replace($matches[0], $string, $matches[0]);
-            },
-            $strippedOpeningTag
+        )->replaceCloseTag(
+            'capture',
+            'endcapture'
         );
     }
 }

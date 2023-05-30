@@ -11,6 +11,8 @@
 
 namespace toTwig\Converter;
 
+use toTwig\SourceConverter\Token\TokenTag;
+
 /**
  * @author sankara <sankar.suda@gmail.com>
  */
@@ -24,22 +26,11 @@ class IncludeConverter extends ConverterAbstract
     protected string $string = '{% include :template :with :vars %}';
     protected string $attrName = 'file';
 
-    /**
-     * IncludeConverter constructor.
-     */
-    public function __construct()
+    public function convert(TokenTag $content): TokenTag
     {
-        $this->pattern = $this->getOpeningTagPattern('include');
-    }
-
-    public function convert(string $content): string
-    {
-        $pattern = $this->pattern;
-        $string = $this->string;
-
-        return preg_replace_callback(
-            $pattern,
-            function ($matches) use ($string) {
+        return $content->replaceOpenTag(
+            $this->name,
+            function ($matches) use ($content) {
                 $attr = $this->getAttributes($matches);
                 $replace = [];
                 $replace['template'] = $this->convertFileExtension($attr[$this->attrName]);
@@ -54,9 +45,7 @@ class IncludeConverter extends ConverterAbstract
 
                     $replace['vars'] = $this->getOptionalReplaceVariables($attr);
                 }
-                $string = $this->replaceNamedArguments($string, $replace);
-
-                return str_replace($matches[0], $string, $matches[0]);
+                return $this->replaceNamedArguments($this->string, $replace);
             },
             $content
         );

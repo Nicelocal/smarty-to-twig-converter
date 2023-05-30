@@ -7,6 +7,8 @@
 
 namespace toTwig\Converter;
 
+use toTwig\SourceConverter\Token\TokenTag;
+
 /**
  * Class VeparseConverter
  */
@@ -16,7 +18,7 @@ class VeparseConverter extends ConverterAbstract
     protected string $description = 'Convert veparse to twig';
     protected int $priority = 20;
 
-    public function convert(string $content): string
+    public function convert(TokenTag $content): TokenTag
     {
         $content = $this->replaceVeparse($content);
         $content = $this->replaceEndVeparse($content);
@@ -24,12 +26,10 @@ class VeparseConverter extends ConverterAbstract
         return $content;
     }
 
-    private function replaceVeparse(string $content): string
+    private function replaceVeparse(TokenTag $content): TokenTag
     {
-        $pattern = $this->getOpeningTagPattern('veparse');
-
-        return preg_replace_callback(
-            $pattern,
+        return $content->replaceOpenTag(
+            'veparse',
             function ($matches) {
                 $attr = $this->getAttributes($matches);
 
@@ -39,20 +39,16 @@ class VeparseConverter extends ConverterAbstract
                 }
 
                 $replace['vars'] = implode(' ', $vars);
-                $string = $this->replaceNamedArguments('{%veparse :vars%}', $replace);
+                $string = $this->replaceNamedArguments('veparse :vars', $replace);
 
-                return str_replace($matches[0], $string, $matches[0]);
+                return $string;
             },
-            $content
         );
     }
 
-    private function replaceEndVeparse(string $content): string
+    private function replaceEndVeparse(TokenTag $content): TokenTag
     {
-        $search = $this->getClosingTagPattern('veparse');
-        $replace = "{%endveparse%}";
-
-        return preg_replace($search, $replace, $content);
+        return $content->replaceCloseTag('verpase', 'endveparse');
     }
 
 }

@@ -15,6 +15,9 @@ use AssertionError;
 use Exception;
 use SplFileInfo;
 use toTwig\FilterNameMap;
+use toTwig\SourceConverter\Token;
+use toTwig\SourceConverter\Token\TokenTag;
+
 
 /**
  * @author sankar <sankar.suda@gmail.com>
@@ -42,14 +45,7 @@ abstract class ConverterAbstract
      */
     protected int $priority = 0;
 
-    /**
-     * Fixes a file.
-     *
-     * @param string $content The file content
-     *
-     * @return string The fixed file content
-     */
-    public function convert(string $content): string
+    public function convert(TokenTag $content): TokenTag
     {
         return $content;
     }
@@ -80,30 +76,7 @@ abstract class ConverterAbstract
     {
         return true;
     }
-
-    /**
-     * Get opening tag patterns like:
-     *   [{tagName other stuff}]
-     *   [{foreach $myColors as $color}]
-     *
-     * Matching this pattern will give these results:
-     *   $matches[0] contains a string with full matched tag i.e.'[{tagName foo="bar" something="somevalue"}]'
-     *   $matches[1] should contain a string with all other configuration coming with a tag i.e.
-     *   'foo = "bar" something="somevalue"'
-     */
-    protected function getOpeningTagPattern(string $tagName): string
-    {
-        return sprintf("#\{\{\s*%s\b\s*((?:(?!\{\{|\}\}).(?<!\{\{)(?<!\}\}))+)?\}\}#is", preg_quote($tagName, '#'));
-    }
-
-    /**
-     * Get closing tag pattern: [{/tagName}]
-     */
-    protected function getClosingTagPattern(string $tagName): string
-    {
-        return sprintf("#\{\{\s*/%s\s*\}\}#i", preg_quote($tagName, '#'));
-    }
-
+    
     /**
      * Method to extract key/value pairs out of a string with xml style attributes
      *
@@ -546,10 +519,9 @@ abstract class ConverterAbstract
         return preg_replace('/\.tpl/', '.html.twig', $templateName);
     }
 
-    protected function getAttributes(array $matches): array
+    protected function getAttributes(string $attributes): array
     {
-        $match = $this->getPregReplaceCallbackMatch($matches);
-        return $this->extractAttributes($match);
+        return $this->extractAttributes($attributes);
     }
 
     protected function getPregReplaceCallbackMatch(array $matches): string

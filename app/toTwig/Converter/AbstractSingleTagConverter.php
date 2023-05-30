@@ -6,6 +6,10 @@
 
 namespace toTwig\Converter;
 
+use toTwig\SourceConverter\Token;
+use toTwig\SourceConverter\Token\TokenTag;
+
+
 /**
  * Class AbstractSingleTagConverter
  */
@@ -24,33 +28,21 @@ abstract class AbstractSingleTagConverter extends ConverterAbstract
         }
     }
 
-    /**
-     * @param string $content
-     *
-     * @return null|string|string[]
-     */
-    public function convert(string $content): string
+    public function convert(TokenTag $content): TokenTag
     {
-        $pattern = $this->getOpeningTagPattern($this->name);
+        return $content->replaceOpenTag($this->name, function ($attributes) {
+            $attributes = $this->extractAttributes($attributes);
 
-        return preg_replace_callback(
-            $pattern,
-            function ($matches) {
-                $match = $matches[1] ?? '';
-                $attributes = $this->extractAttributes($match);
+            $arguments = [];
+            foreach ($this->mandatoryFields as $mandatoryField) {
+                $arguments[] = $this->sanitizeExpression($attributes[$mandatoryField]);
+            }
 
-                $arguments = [];
-                foreach ($this->mandatoryFields as $mandatoryField) {
-                    $arguments[] = $this->sanitizeExpression($attributes[$mandatoryField]);
-                }
+            if ($this->convertArrayToAssocTwigArray($attributes, $this->mandatoryFields)) {
+                $arguments[] = $this->convertArrayToAssocTwigArray($attributes, $this->mandatoryFields);
+            }
 
-                if ($this->convertArrayToAssocTwigArray($attributes, $this->mandatoryFields)) {
-                    $arguments[] = $this->convertArrayToAssocTwigArray($attributes, $this->mandatoryFields);
-                }
-
-                return sprintf("{{ %s(%s) }}", $this->convertedName, implode(", ", $arguments));
-            },
-            $content
-        );
+            return sprintf("{{ %s(%s) }}", $this->convertedName, implode(", ", $arguments));
+        });
     }
 }

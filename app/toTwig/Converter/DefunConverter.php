@@ -6,6 +6,8 @@
 
 namespace toTwig\Converter;
 
+use toTwig\SourceConverter\Token\TokenTag;
+
 /**
  * Class DefunConverter
  *
@@ -25,7 +27,7 @@ class DefunConverter extends ConverterAbstract
     private ?string $macroName = null;
 
 
-    public function convert(string $content): string
+    public function convert(TokenTag $content): TokenTag
     {
         $content = $this->replaceOpeningTag($content);
         $content = $this->replaceCallToMacro($content);
@@ -34,69 +36,54 @@ class DefunConverter extends ConverterAbstract
         return $content;
     }
 
-    private function replaceOpeningTag(string $content): string
+    private function replaceOpeningTag(TokenTag $content): TokenTag
     {
-        $pattern = $this->getOpeningTagPattern('defun');
         $string = '{% macro :macroName(:parameters) %}';
 
-        return preg_replace_callback(
-            $pattern,
+        return $content->replaceOpenTag(
+            'defun',
             function ($matches) use ($string) {
                 $attr = $this->getAttributes($matches);
                 $this->macroName = $this->sanitizeVariableName($attr['name']);
                 $parameters = $this->getParameters($attr);
                 $this->setArguments($attr);
-                $string = $this->replaceNamedArguments(
+                return $this->replaceNamedArguments(
                     $string,
                     ['macroName' => $this->macroName, 'parameters' => $parameters]
                 );
-
-                return str_replace($matches[0], $string, $matches[0]);
             },
             $content
         );
     }
 
-    private function replaceCallToMacro(string $content): string
+    private function replaceCallToMacro(TokenTag $content): TokenTag
     {
-        $pattern = $this->getOpeningTagPattern('fun');
-
-        return preg_replace_callback(
-            $pattern,
+        return $content->replaceOpenTag(
+            'fun',
             function ($matches) {
                 $attr = $this->getAttributes($matches);
                 $macroName = $this->sanitizeVariableName($attr['name']);
 
                 // we have to use local macro variables as arguments passed to the nested macro
                 $parameters = $this->getParameters($attr);
-                $string = $this->replaceNamedArguments(
+                return $this->replaceNamedArguments(
                     $this->twigCallToMacro,
                     ['macroName' => $macroName, 'arguments' => $parameters]
                 );
-
-                return str_replace($matches[0], $string, $matches[0]);
             },
             $content
         );
     }
 
-    private function replaceClosingTag(string $content): string
+    private function replaceClosingTag(TokenTag $content): TokenTag
     {
-        $pattern = $this->getClosingTagPattern('defun');
-        //smarty calls defined macro automatically
-        $string = "{% endmacro %}" . $this->twigCallToMacro;
-
-        return preg_replace_callback(
-            $pattern,
-            function ($matches) use ($string) {
-                $string = $this->replaceNamedArguments(
-                    $string,
-                    ['macroName' => $this->macroName, 'arguments' => $this->arguments]
-                );
-
-                return str_replace($matches[0], $string, $matches[0]);
-            },
-            $content
+        return $content->replaceCloseTag(
+            'defun',
+            $this->replaceNamedArguments(
+                "{% endmacro %}" . $this->twigCallToMacro,
+                ['macroName' => $this->macroName, 'arguments' => $this->arguments]
+            ),
+            true
         );
     }
 

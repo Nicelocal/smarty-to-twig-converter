@@ -11,6 +11,10 @@
 
 namespace toTwig\Converter;
 
+use toTwig\SourceConverter\Token;
+use toTwig\SourceConverter\Token\TokenTag;
+
+
 /**
  * @author sankara <sankar.suda@gmail.com>
  */
@@ -20,15 +24,10 @@ class AssignConverter extends ConverterAbstract
     protected string $description = "Convert smarty {assign} to twig {% set foo = 'foo' %}";
     protected int $priority = 100;
 
-    public function convert(string $content): string
+    public function convert(TokenTag $content): TokenTag
     {
-        $pattern = $this->getOpeningTagPattern('assign');
-        $string = '{% set :key = :value %}';
-
-        return preg_replace_callback(
-            $pattern,
-            function ($matches) use ($string) {
-                $attr = $this->getAttributes($matches);
+        return $content->replaceOpenTag($this->name, function ($attributes) {
+                $attr = $this->getAttributes($attributes);
 
                 if (isset($attr['var'])) {
                     $key = $attr['var'];
@@ -49,11 +48,8 @@ class AssignConverter extends ConverterAbstract
 
                 $key = $this->sanitizeVariableName($key);
                 $value = $this->sanitizeExpression($value);
-                $string = $this->replaceNamedArguments($string, ['key' => $key, 'value' => $value]);
-
-                return str_replace($matches[0], $string, $matches[0]);
-            },
-            $content
+                return $this->replaceNamedArguments('{% set :key = :value %}', ['key' => $key, 'value' => $value]);
+            }
         );
     }
 }

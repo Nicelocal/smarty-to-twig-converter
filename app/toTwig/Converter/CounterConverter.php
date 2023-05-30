@@ -6,6 +6,8 @@
 
 namespace toTwig\Converter;
 
+use toTwig\SourceConverter\Token\TokenTag;
+
 /**
  * Class CounterConverter
  */
@@ -15,14 +17,11 @@ class CounterConverter extends ConverterAbstract
     protected string $description = 'Convert smarty Counter to twig';
     protected int $priority = 1000;
 
-    public function convert(string $content): string
+    public function convert(TokenTag $content): TokenTag
     {
-        $pattern = $this->getOpeningTagPattern('counter');
-        $string = '{% set :name = ( :name | default(:start) ) :direction :skip %}:print:assign';
-
-        return preg_replace_callback(
-            $pattern,
-            function ($matches) use ($string) {
+        return $content->replaceOpenTag(
+            'counter',
+            function ($matches) {
                 $attr = $this->getAttributes($matches);
 
                 $replace['name'] = $this->getNameAttribute($attr);
@@ -32,9 +31,10 @@ class CounterConverter extends ConverterAbstract
                 $replace['print'] = $this->getPrintAttribute($attr, $replace['name']);
                 $replace['assign'] = $this->getAssignAttribute($attr, $replace['name']);
 
-                $string = $this->replaceNamedArguments($string, $replace);
-
-                return str_replace($matches[0], $string, $matches[0]);
+                return $this->replaceNamedArguments(
+                    '{% set :name = ( :name | default(:start) ) :direction :skip %}:print:assign',
+                    $replace
+                );
             },
             $content
         );

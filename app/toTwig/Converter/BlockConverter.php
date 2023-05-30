@@ -6,6 +6,10 @@
 
 namespace toTwig\Converter;
 
+use toTwig\SourceConverter\Token;
+use toTwig\SourceConverter\Token\TokenTag;
+
+
 /**
  * Class BlockConverter
  */
@@ -15,7 +19,7 @@ class BlockConverter extends ConverterAbstract
     protected string $description = 'Convert block to twig';
     protected int $priority = 50;
 
-    public function convert(string $content): string
+    public function convert(TokenTag $content): TokenTag
     {
         $content = $this->replaceBlock($content);
         $content = $this->replaceEndBlock($content);
@@ -25,73 +29,52 @@ class BlockConverter extends ConverterAbstract
         return $content;
     }
 
-    private function replaceEndBlock(string $content): string
+    private function replaceEndBlock(TokenTag $content): Token
     {
-        $search = $this->getClosingTagPattern('block');
-        $replace = "{% endblock %}";
-
-        return preg_replace($search, $replace, $content);
+        return $content->replaceCloseTag('block', 'endblock');
     }
 
-    private function replaceBlock(string $content): string
+    private function replaceBlock(TokenTag $content): Token
     {
-        $pattern = $this->getOpeningTagPattern('block');
+        return $content->replaceOpenTag('block', function ($matches) {
+            $attr = $this->getAttributes($matches);
 
-        return preg_replace_callback(
-            $pattern,
-            function ($matches) {
-                $attr = $this->getAttributes($matches);
-                $name = $this->getSanitizedName($attr);
-                $block = $this->getBlockOpeningTag($name, $attr);
+            if (isset($attr['name'])) {
+                $name = $this->sanitizeExpression($attr['name']);
+            } else {
+                $name = $this->sanitizeExpression(array_shift($attr));
+            }
 
-                return $block;
-            },
-            $content
-        );
+            $block = "block ".trim($name, '"');
+            if (isset($attr['prepend'])) {
+                $block .= "{{ parent() }}";
+            }
+
+            return "{% $block %}";
+        });
     }
 
-    private function getSanitizedName(array $attr): string
+    private function replaceExtends(TokenTag $content): Token
     {
-        if (isset($attr['name'])) {
-            $name = $this->sanitizeExpression($attr['name']);
-        } else {
-            $name = $this->sanitizeExpression(array_shift($attr));
-        }
-
-        return $name;
-    }
-
-    private function getBlockOpeningTag(string $name, array $attr): string
-    {
-        $block = sprintf("{%% block %s %%}", trim($name, '"'));
-        if (isset($attr['prepend'])) {
-            $block .= "{{ parent() }}";
-        }
-
-        return $block;
-    }
-
-    private function replaceExtends(string $content): string
-    {
-        $pattern = $this->getOpeningTagPattern('extends');
-
-        return preg_replace_callback(
-            $pattern,
+        return $content->replaceOpenTag(
+            'extends',
             function ($matches) {
                 $attr = $this->getAttributes($matches);
                 $file = $this->sanitizeExpression(reset($attr));
                 $file = $this->convertFileExtension($file);
 
-                return sprintf("{%% extends %s %%}", $file);
-            },
-            $content
+                return "{% extends $file %}";
+            }
         );
     }
 
-    private function replaceParent(string $content): string
+    private function replaceParent(TokenTag $content): Token
     {
-        $pattern = $this->getOpeningTagPattern('$smarty.block.parent');
-
-        return preg_replace($pattern, "{{ parent() }}", $content);
+        return $content->replaceOpenTag(
+            '$smarty.block.parent',
+            function () {
+                return "{{ parent() }}";
+            }
+        );
     }
 }

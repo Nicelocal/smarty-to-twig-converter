@@ -11,6 +11,8 @@
 
 namespace toTwig\Converter;
 
+use toTwig\SourceConverter\Token\TokenTag;
+
 /**
  * @author sankar <sankar.suda@gmail.com>
  */
@@ -20,23 +22,19 @@ class UseConverter extends ConverterAbstract
     protected string $description = 'Convert smarty use/useif to twig';
     protected int $priority = 100;
 
-    public function convert(string $content): string
+    public function convert(TokenTag $content): TokenTag
     {
-        $content = $this->replaceUse($content);
-        $content = $this->replaceUseIf($content);
-        // Replace smarty {/if} to its twig analogue
-        $content = preg_replace($this->getClosingTagPattern('useif'), "{% endif %}", $content);
-        // Remove smarty {/use}
-        $content = preg_replace($this->getClosingTagPattern('use'), '', $content);
-
-        return $content;
+        $content = $this->convertTag($content, false);
+        $content = $this->convertTag($content, true);
+        return $content->replaceCloseTag('useif', 'endif')
+            ->replaceCloseTag('use', '', true);
     }
 
-    private function generateAssignment(string $pattern, string $content, bool $addIf): string {
-        return preg_replace_callback(
-            $pattern,
+    private function convertTag(TokenTag $content, bool $addIf): TokenTag {
+        return $content->replaceOpenTag(
+            $addIf ? 'useif' : 'use',
             function ($matches) use ($addIf) {
-                [$value, $key] = $this->splitParsing($matches[1], 'as');
+                [$value, $key] = $this->splitParsing($matches, 'as');
                 $value = $this->sanitizeExpression($value);
 
                 $keys = explode(',', $key);
@@ -58,23 +56,7 @@ class UseConverter extends ConverterAbstract
                     $final .= "{% set {$key} = {$key_temp}[{$k}] %}";
                 }
                 return $final;
-            },
-            $content
+            }
         );
-    }
-    /**
-     * Replace smarty "use" tag to its twig analogue
-     */
-    private function replaceUse(string $content): string
-    {
-        return $this->generateAssignment($this->getOpeningTagPattern('use'), $content, false);
-    }
-
-    /**
-     * Replace smarty "useif" tag to its twig analogue
-     */
-    private function replaceUseIf(string $content): string
-    {
-        return $this->generateAssignment($this->getOpeningTagPattern('use'), $content, true);
     }
 }

@@ -20,12 +20,6 @@ final class TokenComment extends Token {
     public function __construct(public readonly string $content)
     {
     }
-    public function replace(string $content): self {
-        if ($this->content !== $content) {
-            return new self($content);
-        }
-        return $this;
-    }
     public function __toString(): string
     {
         return "{#".$this->content."#}";
