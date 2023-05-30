@@ -387,10 +387,10 @@ abstract class ConverterAbstract
         $k = 0;
         $arr = [];
         while ($x < strlen($string)) {
-            $key = $this->parseValue($string, $x, ['=>', ',', ']']);
+            $key = $this->sanitizeExpression($this->parseValue($string, $x, ['=>', ',', ']']));
             $cur = $string[$x++] ?? '';
             if ($cur === '>') {
-                $value = $this->parseValue($string, $x, [',', ']']);
+                $value = $this->sanitizeExpression($this->parseValue($string, $x, [',', ']']));
                 $x++;
             } elseif ($cur === ',' || $cur === ']' || $cur === '') {
                 $value = $key;
