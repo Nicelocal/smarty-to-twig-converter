@@ -374,9 +374,9 @@ abstract class ConverterAbstract
                 $chunk = $this->sanitizeExpression($chunk);
                 $final .= $prefix."[$chunk]";
             }
-            return $final;
+            return $final.$prefix;
         }
-        return $this->parseArrayKeyValue($chunks[0][1]);
+        return $this->parseArrayKeyValue($chunks[0][1]).$prefix;
     }
 
     private function parseArrayKeyValue(string $string): string
