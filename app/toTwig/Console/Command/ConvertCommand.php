@@ -65,7 +65,7 @@ Converter can work with files and directories:
 	<info>php toTwig convert --path=/path/to/file</info>
 	
 <comment>--ext</comment>
-By default files with .html.twig extension will be created. To specify different extensions use --ext parameter:
+By default files with .twig extension will be created. To specify different extensions use --ext parameter:
 
     <info>php toTwig convert --path=/path/to/dir --ext=.js.twig</info>
     
@@ -87,11 +87,11 @@ You can also blacklist the table columns you don't want using "-" before column 
 <comment>--converters</comment>
 The --converters option lets you choose which converters to apply (the converter names must be separated by a comma):
 
-    <info>php toTwig convert --path=/path/to/dir --ext=.html.twig --converters=for,if,misc</info>
+    <info>php toTwig convert --path=/path/to/dir --ext=.twig --converters=for,if,misc</info>
 
 You can also blacklist the converters you don't want if this is more convenient, using "-" before converter name:
 
-    <info>php toTwig convert --path=/path/to/dir --ext=.html.twig --converters=-for,-if</info>
+    <info>php toTwig convert --path=/path/to/dir --ext=.twig --converters=-for,-if</info>
 
 <comment>--dry-run</comment>
 The --dry-run option displays the files that need to be fixed but without actually modifying them:
@@ -156,7 +156,7 @@ EOF
                 '',
                 InputOption::VALUE_REQUIRED,
                 'To output files with other extension',
-                '.html.twig'
+                '.twig'
             ),
             new InputOption(
                 'diff',

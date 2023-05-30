@@ -516,7 +516,7 @@ abstract class ConverterAbstract
 
     protected function convertFileExtension(string $templateName): string
     {
-        return preg_replace('/\.tpl/', '.html.twig', $templateName);
+        return str_replace('.tpl', '.twig', $templateName);
     }
 
     protected function getAttributes(string $attributes): array
