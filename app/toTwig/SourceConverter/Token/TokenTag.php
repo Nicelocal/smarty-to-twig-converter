@@ -20,7 +20,7 @@ final class TokenTag extends Token {
     public function __construct(public readonly string $content, public readonly bool $converted)
     {
     }
-    public function replaceOpenTag(string $openTag, callable $replacer): self {
+    public function replaceOpenTag(string $openTag, callable $replacer, bool $converted = true): self {
         if ($this->converted) {
             return $this;
         }
@@ -37,7 +37,10 @@ final class TokenTag extends Token {
         if ($args === $result) {
             return $this;
         }
-        return new self($result, true);
+        $token = new self($result, $converted);
+        $token->prev = $this->prev;
+        $token->next = $this->next;
+        return $token;
     }
     public function replaceCloseTag(string $closeTag, string $replacement, bool $custom = false): self {
         if ($this->converted) {
@@ -54,7 +57,20 @@ final class TokenTag extends Token {
         if (!$custom) {
             $replacement = '{% '.$replacement.' %}';
         }
-        return new self($replacement, true);
+        $token = new self($replacement, true);
+        $token->prev = $this->prev;
+        $token->next = $this->next;
+        return $token;
+    }
+    public function replace(string $replacement, ?bool $converted = null): self {
+        if ($this->converted || $replacement === $this->content) {
+            return $this;
+        }
+
+        $token = new self($replacement, $converted ?? $this->converted);
+        $token->prev = $this->prev;
+        $token->next = $this->next;
+        return $token;
     }
     public function __toString(): string
     {

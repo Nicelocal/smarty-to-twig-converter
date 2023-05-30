@@ -46,8 +46,7 @@ class IncludeConverter extends ConverterAbstract
                     $replace['vars'] = $this->getOptionalReplaceVariables($attr);
                 }
                 return $this->replaceNamedArguments($this->string, $replace);
-            },
-            $content
+            }
         );
     }
 }

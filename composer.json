@@ -10,7 +10,8 @@
         "symfony/finder": "^5.0.4",
         "sebastian/diff": "^4.0.4",
         "doctrine/dbal": "^2.13",
-        "ext-dom": "*"
+        "ext-dom": "*",
+        "nikic/php-parser": "^4.15"
     },
     "require-dev": {
         "oxid-esales/coding-standards": "^v3.0.5",

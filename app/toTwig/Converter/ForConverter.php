@@ -40,7 +40,7 @@ class ForConverter extends ConverterAbstract
             $contentStr = preg_replace('/' . $k . '/', $v, $contentStr);
         }
 
-        return new TokenTag($contentStr, $content->converted);
+        return $content->replace($contentStr);
     }
 
     private function replaceForEach(TokenTag $content): TokenTag
@@ -55,8 +55,7 @@ class ForConverter extends ConverterAbstract
                 }
                 $replace['from'] = $this->sanitizeExpression($replace['from']);
                 return $this->replaceNamedArguments('{% for :key :item in :from %}', $replace);
-            },
-            $content
+            }
         );
     }
 
@@ -75,8 +74,7 @@ class ForConverter extends ConverterAbstract
                     '{% for :value in range(:start, :limit, :step) %}',
                     $args
                 );
-            },
-            $content
+            }
         );
     }
 

@@ -39,7 +39,7 @@ class SectionConverter extends ConverterAbstract
             $contentStr = preg_replace('/' . $k . '/', $v, $contentStr);
         }
 
-        return new TokenTag($contentStr, $content->converted);
+        return $content->replace($contentStr);
     }
 
     /**
@@ -54,8 +54,7 @@ class SectionConverter extends ConverterAbstract
                 $replacement['start'] = isset($replacement['start']) ? $replacement['start'] : 0;
                 $replacement['name'] = $this->sanitizeVariableName($replacement['name']);
                 return $this->replaceNamedArguments('{% for :name in :start..:loop %}', $replacement);
-            },
-            $content
+            }
         );
     }
 

@@ -16,5 +16,7 @@ use toTwig\ConversionResult;
 use toTwig\Converter\ConverterAbstract;
 
 abstract class Token {
+    public ?Token $prev;
+    public ?Token $next;
     abstract public function __toString(): string;
 }

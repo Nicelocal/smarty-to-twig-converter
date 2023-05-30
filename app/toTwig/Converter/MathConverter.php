@@ -42,8 +42,7 @@ class MathConverter extends ConverterAbstract
                 $formattedEquation = $this->mathEquationSprintf($equationTemplate, $vars);
                 $replace['equation'] = $formattedEquation;
                 return $this->replaceNamedArguments($string, $replace);
-            },
-            $content
+            }
         );
     }
 

@@ -34,8 +34,7 @@ class CycleConverter extends ConverterAbstract
                 $argumentsString = $this->composeArgumentsString($valuesArray, $extraParameters);
 
                 return $this->getTag($argumentsString, $assignVar);
-            },
-            $content
+            }
         );
     }
 

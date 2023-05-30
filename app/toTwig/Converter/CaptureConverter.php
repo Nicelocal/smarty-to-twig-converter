@@ -37,8 +37,7 @@ class CaptureConverter extends ConverterAbstract
                 }
 
                 return $this->replaceNamedArguments($string, $attr);
-            },
-            $content
+            }
         )->replaceCloseTag(
             'capture',
             'endcapture'

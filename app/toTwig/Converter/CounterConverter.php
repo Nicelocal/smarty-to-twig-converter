@@ -35,8 +35,7 @@ class CounterConverter extends ConverterAbstract
                     '{% set :name = ( :name | default(:start) ) :direction :skip %}:print:assign',
                     $replace
                 );
-            },
-            $content
+            }
         );
     }
 

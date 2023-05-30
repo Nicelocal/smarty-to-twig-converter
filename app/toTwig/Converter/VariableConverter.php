@@ -31,7 +31,7 @@ class VariableConverter extends ConverterAbstract
         if (ltrim($content->content)[0] === '/') {
             throw new AssertionError("Unrecognized close tag ".$content->content);
         }
-        return new TokenTag(
+        return $content->replace(
             '{{ '.$this->sanitizeExpression($content->content).' }}',
             true
         );

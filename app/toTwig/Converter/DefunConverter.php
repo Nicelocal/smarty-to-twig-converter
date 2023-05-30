@@ -51,8 +51,7 @@ class DefunConverter extends ConverterAbstract
                     $string,
                     ['macroName' => $this->macroName, 'parameters' => $parameters]
                 );
-            },
-            $content
+            }
         );
     }
 
@@ -70,8 +69,7 @@ class DefunConverter extends ConverterAbstract
                     $this->twigCallToMacro,
                     ['macroName' => $macroName, 'arguments' => $parameters]
                 );
-            },
-            $content
+            }
         );
     }
 

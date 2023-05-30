@@ -45,12 +45,12 @@ class GetRequestVariablesConverter extends ConverterAbstract
 
     private function convertGetter(TokenTag $content, string $pattern, string $getterName): TokenTag
     {
-        return new TokenTag(preg_replace_callback(
+        return $content->replace(preg_replace_callback(
             $pattern,
             function ($matches) use ($getterName) {
                 return str_replace($matches[0], $getterName . '("' . $matches[1] . '")', $matches[0]);
             },
             $content->content
-        ), $content->converted);
+        ));
     }
 }

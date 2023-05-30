@@ -64,9 +64,9 @@ abstract class SourceConverter
         return $result;
     }
     private function convertInner(string $in, array $converters): string {
-        $tokenizer = new Tokenizer($in);
+        $token = Tokenizer::chainTokenize($in);
         $final = '';
-        while ($token = $tokenizer->next()) {
+        do {
             if ($token instanceof TokenHtml) {
                 $final .= (string) $token;
             } elseif ($token instanceof TokenComment) {
@@ -77,7 +77,7 @@ abstract class SourceConverter
                 }
                 $final .= (string) $token;
             }
-        }
+        } while ($token = $token->next);
         return $final;
     }
 

@@ -27,6 +27,28 @@ final class Tokenizer extends ConverterAbstract
     private int $offset = 0;
     public function __construct(private readonly string $content) {
     }
+    public static function chainTokenize(string $content): Token {
+        if ($content === '') {
+            $token = new TokenHtml('');
+            $token->next = null;
+            $token->prev = null;
+            return $token;
+        }
+        $me = new self($content);
+        $first = $token = $me->next();
+        $prev = null;
+        do {
+            if ($prev) {
+                $token->prev = $prev;
+                $prev->next = $token;
+            } else {
+                $token->prev = null;
+            }
+            $prev = $token;
+        } while ($token = $me->next());
+        $prev->next = null;
+        return $first;
+    }
     public function next(): ?Token {
         if ($this->offset >= strlen($this->content)) {
             return null;
