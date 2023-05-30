@@ -118,7 +118,7 @@ class ForConverter extends ConverterAbstract
             $replace['key'] = $this->sanitizeVariableName($attr['key']) . ',';
         }
 
-        $replace['item'] = $this->sanitizeVariableName($attr['item']);
+        $replace['item'] = $this->sanitizeVariableName($attr['item'] ?? $attr['value']);
         $replace['from'] = $attr['from'];
 
         return $replace;
