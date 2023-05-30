@@ -59,7 +59,7 @@ class PhpConverter extends ConverterAbstract
                     throw new AssertionError("A name is expected: $code");
                 }
                 $parsed = new FuncCall(
-                    new Name('print_class'),
+                    new Name('print_new_class'),
                     [
                         new Arg(new String_('\\'.$parsed->class->toString())),
                         ...$parsed->args
