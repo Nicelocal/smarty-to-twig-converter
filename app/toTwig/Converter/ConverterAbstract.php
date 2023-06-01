@@ -430,11 +430,7 @@ abstract class ConverterAbstract
         }
         
         $append_filter = function (string &$filter_name, array &$filter_args) use (&$final) {
-            $filter_name = ltrim($filter_name, '@');
-            $filter_name = match ($filter_name) {
-                'esc' => 'escape',
-                default => $filter_name
-            };
+            $filter_name = FilterNameMap::getConvertedFilterName(ltrim($filter_name, '@'));
             $final .= '|'.$filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
             $filter_name = '';
             $filter_args = [];
