@@ -469,13 +469,12 @@ abstract class ConverterAbstract
         if (trim($filter_name) !== '') {
             $append_filter($filter_name, $filter_args);
         }
-        if ($last_filter === 'esc' || ($last_filter === 'escape("html")')) {
-            array_pop($final);
-        } elseif ($last_filter !== 'raw' && ($last_filter !== '' || $root)) {
-            if ($last_filter === '') {
+        if ($root) {
+            if ($last_filter === 'esc' || $last_filter === 'escape("html")') {
+                array_pop($final);
+            } elseif ($last_filter !== 'raw') {
                 return '('.implode('', $final).')|raw';
             }
-            $final []= '|raw';
         }
         //var_dump($string, $final);
         return implode('', $final);
