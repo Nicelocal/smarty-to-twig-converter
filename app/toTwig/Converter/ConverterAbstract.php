@@ -414,7 +414,7 @@ abstract class ConverterAbstract
      *   smarty: [{ "foo"|smarty_bar) }]
      *   twig:   {{ "foo"|twig_bar }}
      */
-    private function convertFilters(string $string): string
+    private function convertFilters(string $string, bool $root = false): string
     {
         $x = 0;
         $final = '';
@@ -428,10 +428,13 @@ abstract class ConverterAbstract
                 break;
             }
         }
+        $final = [$final];
         
-        $append_filter = function (string &$filter_name, array &$filter_args) use (&$final) {
+        $last_filter = '';
+        $append_filter = function (string &$filter_name, array &$filter_args) use (&$final, &$last_filter) {
             $filter_name = FilterNameMap::getConvertedFilterName(ltrim($filter_name, '@'));
-            $final .= '|'.$filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
+            $last_filter = $filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
+            $final []= '|'.$last_filter;
             $filter_name = '';
             $filter_args = [];
         };
@@ -466,8 +469,16 @@ abstract class ConverterAbstract
         if (trim($filter_name) !== '') {
             $append_filter($filter_name, $filter_args);
         }
+        if ($last_filter === 'esc' || ($last_filter === 'escape("html")')) {
+            array_pop($final);
+        } elseif ($last_filter !== 'raw' && ($last_filter !== '' || $root)) {
+            if ($last_filter === '') {
+                return '('.implode('', $final).')|raw';
+            }
+            $final []= '|raw';
+        }
         //var_dump($string, $final);
-        return $final;
+        return implode('', $final);
     }
     private function convertIdentical(string $expression): string
     {
@@ -500,9 +511,9 @@ abstract class ConverterAbstract
      *   $matches[2] should contain a string with one of following characters: +, -, >, <, *, /, %, &&, ||
      *   $matches[3] should contain a string with second part of an expression i.e. $b
      */
-    protected function sanitizeExpression(string $expression): string
+    protected function sanitizeExpression(string $expression, bool $root = false): string
     {
-        $expression = $this->convertFilters($expression);
+        $expression = $this->convertFilters($expression, $root);
 
         $expression = $this->splitSanitize($expression);
 

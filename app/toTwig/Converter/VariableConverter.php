@@ -32,7 +32,7 @@ class VariableConverter extends ConverterAbstract
             throw new AssertionError("Unrecognized close tag ".$content->content);
         }
         return $content->replace(
-            '{{ '.$this->sanitizeExpression($content->content).' }}',
+            '{{ '.$this->sanitizeExpression($content->content, true).' }}',
             true
         );
     }
