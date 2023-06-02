@@ -114,6 +114,7 @@ abstract class ConverterAbstract
         return $pairs;
     }
 
+
     private const TOKENS = [
         ' ',
         '+',
@@ -140,6 +141,24 @@ abstract class ConverterAbstract
         '->'
     ];
 
+    private const DELIM_MAP = [
+        '!' => 'not',
+        '&&' => 'and',
+        '||' => 'or',
+        'mod' => '%',
+
+        'gt' => '>',
+        'lt' => '<',
+        'eq' => '==',
+        'ne' => '!=',
+        'neq' => '!=',
+        'gte' => '>=',
+        'ge' => '>=',
+        'lte' => '<=',
+        'le' => '<=',
+
+        '->' => '.',
+    ];
     private function splitSanitize(string $string, int $idx = 0): string {
         if ($idx === count(self::TOKENS)) {
             return $this->sanitizeValue($string);
@@ -163,7 +182,8 @@ abstract class ConverterAbstract
         if ($string === '?:') {
             return $string;
         }
-        $delimNew = $this->sanitizeValue($delim) ?: $delim;
+        $delimNew = trim($delim);
+        $delimNew = self::DELIM_MAP[$delim] ?? $delim;
         if ($delimNew !== ' ') {
             $delimNew = " $delimNew ";
         }
@@ -259,43 +279,10 @@ abstract class ConverterAbstract
     private function sanitizeValue(string $string): string
     {
         $string = trim($string);
+        $string = self::DELIM_MAP[$string] ?? $string;
 
         if (empty($string)) {
             return $string;
-        }
-
-        // Handle operators
-        switch ($string) {
-            case '!':
-                return 'not';
-            case '&&':
-                return 'and';
-            case '||':
-                return 'or';
-            case 'mod':
-                return '%';
-            case 'gt':
-                return '>';
-            case 'lt':
-                return '<';
-
-            case 'eq':
-                return '==';
-
-            case 'ne':
-            case 'neq':
-                return '!=';
-
-            case 'gte':
-            case 'ge':
-                return '>=';
-
-            case 'lte':
-            case 'le':
-                return '<=';
-
-            case '->':
-                return '.';
         }
 
         // Handle non-quoted strings
@@ -326,10 +313,22 @@ abstract class ConverterAbstract
     {
         $x = 0;
         $final = $this->parseValue($string, $x, ['(']);
-        $final .= $string[$x++] ?? '';
-        while ($x < strlen($string)) {
-            $final .= $this->sanitizeExpression($this->parseValue($string, $x, [',', ')']));
+        if ($is_array = trim($final) === 'array') {
+            $final = '[';
+            $x++;
+        } else {
             $final .= $string[$x++] ?? '';
+        }
+        while ($x < strlen($string)) {
+            $temp = $this->parseValue($string, $x, [',', ')']);
+            if (!$is_array) {
+                $temp = $this->sanitizeExpression($temp);
+            }
+            $final .= $temp;
+            $final .= $string[$x++] ?? '';
+        }
+        if ($is_array) {
+            $final = rtrim($final, ')');
         }
         return $final;
     }
