@@ -28,11 +28,11 @@ class MiscConverter extends ConverterAbstract
         'ldelim' => '',
         'rdelim' => '',
         'literal' => '{# literal #}',
-        'strip' => '{% spaceless %}',
+        'strip' => '',
     ];
     private const CLOSE_REPLACE = [
         'literal' => '{# /literal #}',
-        'strip' => '{% endspaceless %}',
+        'strip' => '',
     ];
 
     public function convert(TokenTag $content): TokenTag

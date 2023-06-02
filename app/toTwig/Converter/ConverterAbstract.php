@@ -125,6 +125,7 @@ abstract class ConverterAbstract
         '!==',
         '!=',
         '==',
+        '!',
         '&&',
         '||',
         '-',
@@ -230,6 +231,9 @@ abstract class ConverterAbstract
                 } elseif ($cur === '[' && !$has_delim) {
                     $value .= $cur;
                     $stack []= ']';
+                } elseif ($cur === '{' && !$has_delim) {
+                    $value .= $cur;
+                    $stack []= '}';
                 } elseif ($cur === '(' && !$has_delim) {
                     $value .= $cur;
                     $stack []= ')';
@@ -260,13 +264,10 @@ abstract class ConverterAbstract
             return $string;
         }
 
-        // Handle "..." and '...'
-        if (preg_match("/^\"[^\"]*\"$/", $string) || preg_match("/^'[^']*'$/", $string)) {
-            return $string;
-        }
-
         // Handle operators
         switch ($string) {
+            case '!':
+                return 'not';
             case '&&':
                 return 'and';
             case '||':
@@ -299,19 +300,10 @@ abstract class ConverterAbstract
 
         // Handle non-quoted strings
         if (preg_match("/^[a-zA-Z]\w+$/", $string)) {
-            if (!in_array($string, ["true", "false", "and", "or", "not"])) {
+            if (!in_array($string, ["true", "false", "and", "or", "not", "null", "TRUE", "FALSE", "NULL"])) {
                 return "\"" . $string . "\"";
             }
-        }
-
-        // Handle "($var"
-        if ($string[0] == "(") {
-            return "(" . $this->sanitizeExpression(ltrim($string, "("));
-        }
-
-        // Handle "!$var"
-        if (preg_match("/(?<=[(\\s]|^)!(?!=)(?=[$]?\\w*)/", $string)) {
-            return "not " . $this->sanitizeExpression(ltrim($string, "!"));
+            $string = strtolower($string);
         }
 
         $string = ltrim($string, '$');
@@ -472,7 +464,7 @@ abstract class ConverterAbstract
         if ($root) {
             if ($last_filter === 'esc' || $last_filter === 'escape("html")') {
                 array_pop($final);
-            } elseif ($last_filter !== 'raw') {
+            } elseif ($last_filter !== 'raw' && $last_filter !== 'json_encode') {
                 return '('.implode('', $final).')|raw';
             }
         }
