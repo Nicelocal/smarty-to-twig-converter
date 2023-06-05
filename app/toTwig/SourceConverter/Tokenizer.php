@@ -101,7 +101,7 @@ final class Tokenizer extends ConverterAbstract
             $this->state = self::STATE_HTML;
             return new TokenComment($content);
         }
-        $content = $this->parseValue($this->content, $this->offset, ['}}']);
+        [$content] = $this->parseValue($this->content, $this->offset, ['}}']);
         $this->offset++;
         $this->state = self::STATE_HTML;
         return new TokenTag($content, false);

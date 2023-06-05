@@ -98,14 +98,14 @@ abstract class ConverterAbstract
                     $key .= $cur;
                 }
             } else {
-                $value = $this->parseValue($string, $x, [' ']);
+                [$value] = $this->parseValue($string, $x, [' ']);
                 $pairs[trim($key)] = trim($value);
                 $key = '';
                 $is_key = true;
             }
         }
         $key = trim($key);
-        $value = $this->parseValue($string, $x, [' ']);
+        [$value] = $this->parseValue($string, $x, [' ']);
         if ($key !== '') {
             $pairs[trim($key)] = trim($value);
         }
@@ -159,68 +159,55 @@ abstract class ConverterAbstract
 
         '->' => '.',
     ];
-    private function splitSanitize(string $string, int $idx = 0): string {
-        if ($idx === count(self::TOKENS)) {
-            return $this->sanitizeValue($string);
-        }
-        $delim = self::TOKENS[$idx];
-        if ($string === '===' && $delim === '==') {
-            return $string;
-        }
-        if ($string === '!==' && $delim === '==') {
-            return $string;
-        }
-        if ($string === '!==' && $delim === '!=') {
-            return $string;
-        }
-        if ($string === '->') {
-            return $string;
-        }
-        if ($string === '=>') {
-            return $string;
-        }
-        if ($string === '?:') {
-            return $string;
-        }
-        $delimNew = trim($delim);
-        $delimNew = self::DELIM_MAP[$delim] ?? $delim;
-        if ($delimNew !== ' ') {
-            $delimNew = " $delimNew ";
-        }
-        if (!str_contains($string, $delim)) {
-            return $this->splitSanitize($string, $idx+1);
-        }
-        $split = $this->splitParsing($string, $delim);
-        if ($delim === '.' && count($split) > 1) {
-            $has_string = false;
-            foreach ($split as $v) {
-                if (in_array(trim($v)[0] ?? '', ['"', "'"], true)) {
-                    $has_string = true;
-                    break;
+    private function splitSanitize(string $string): string {
+        var_dump($string);
+        $final = [];
+        $prevDelim = '';
+        $prevValue = '';
+        for ($x = 0; $x < strlen($string); $x++) {
+            [$value, $delim] = $this->parseValue($string, $x, self::TOKENS);
+            $delimNew = trim($delim);
+            $delimNew = self::DELIM_MAP[$delim] ?? $delim;
+            if (in_array($value[0] ?? '', ['"', "'"], true)) {
+                if ($delimNew === '.') {
+                    $delimNew = '~';
+                } elseif ($prevDelim === '.') {
+                    array_pop($final);
+                    $final []= ' ~ ';
+                }
+            } elseif (in_array($prevValue[0] ?? '', ['"', "'"], true)) {
+                if ($delimNew === '.') {
+                    $delimNew = '~';
                 }
             }
-            if ($has_string) {
-                $delimNew = ' ~ ';
-            } else {
-                return $this->splitSanitize(implode('.', $split), $idx+1);
+            if ($delimNew !== ' ' && $delimNew !== '' && $delimNew !== '.') {
+                $delimNew = " $delimNew ";
             }
+            if ($prevDelim === '.') {
+                array_pop($final);
+                $value = array_pop($final).'.'.$value;
+                if ($delimNew !== '.') {
+                    $value = $this->sanitizeValue($value);
+                }
+            }
+            $final []= $this->sanitizeValue($value);
+            $final []= $delimNew;
+            $prevDelim = $delimNew;
+            $prevValue = $value;
         }
-        if ($delim === '->') {
-            return $this->splitSanitize(implode('.', $split), $idx+1);
-        }
-        return implode($delimNew, array_map(fn ($v) => $this->splitSanitize($v, $idx+1), $split));
+        return implode('', $final);
     }
     protected function splitParsing(string $string, string $delim): array {
         $final = [];
         for ($x = 0; $x < strlen($string); $x++) {
-            $final []= $this->parseValue($string, $x, [$delim]);
+            $final []= $this->parseValue($string, $x, [$delim])[0];
             if ($x === strlen($string)-1) {
                 $final []= '';
             }
         }
         return $final;
     }
-    protected function parseValue(string $string, int &$x, array $delim): string {
+    protected function parseValue(string $string, int &$x, array $delim): array {
         $stack = [];
         $value = '';
         for (; $x < strlen($string); $x++) {
@@ -257,15 +244,15 @@ abstract class ConverterAbstract
                 } elseif ($cur === '(' && !$has_delim) {
                     $value .= $cur;
                     $stack []= ')';
-                } elseif ($has_delim && !$stack && (trim($value) !== '' || !$x)) {
+                } elseif ($has_delim && !$stack && !(trim($d) === '' && trim($value) === '')) {
                     $x += strlen($d)-1;
-                    return trim($value);
+                    return [trim($value), $d];
                 } else {
                     $value .= $cur;
                 }
             }
         }
-        return trim($value);
+        return [trim($value), ''];
     }
 
     /**
@@ -312,7 +299,7 @@ abstract class ConverterAbstract
     private function convertFunctionArguments(string $string): string
     {
         $x = 0;
-        $final = $this->parseValue($string, $x, ['(']);
+        [$final] = $this->parseValue($string, $x, ['(']);
         if ($is_array = trim($final) === 'array') {
             $final = '[';
             $x++;
@@ -320,7 +307,7 @@ abstract class ConverterAbstract
             $final .= $string[$x++] ?? '';
         }
         while ($x < strlen($string)) {
-            $temp = $this->parseValue($string, $x, [',', ')']);
+            [$temp] = $this->parseValue($string, $x, [',', ')']);
             if (!$is_array) {
                 $temp = $this->sanitizeExpression($temp);
             }
@@ -340,18 +327,18 @@ abstract class ConverterAbstract
 
         $chunks = [];
 
-        $prefix = $this->parseValue($string, $x, ['[']);
+        [$prefix] = $this->parseValue($string, $x, ['[']);
         $prefix .= $string[$x++] ?? '';
 
         while ($x < strlen($string)) {
-            $chunk = $this->parseValue($string, $x, [']']);
+            [$chunk] = $this->parseValue($string, $x, [']']);
 
             $chunks []= [
                 $prefix,
                 $chunk
             ];
 
-            $prefix = $this->sanitizeExpression($this->parseValue($string, $x, ['[']));
+            $prefix = $this->sanitizeExpression($this->parseValue($string, $x, ['['])[0]);
             $prefix .= $string[$x++] ?? '';
 
             $postfix = trim($prefix, '[]');
@@ -378,10 +365,10 @@ abstract class ConverterAbstract
         $k = 0;
         $arr = [];
         while ($x < strlen($string)) {
-            $key = $this->sanitizeExpression($this->parseValue($string, $x, ['=>', ',', ']']));
+            $key = $this->sanitizeExpression($this->parseValue($string, $x, ['=>', ',', ']'])[0]);
             $cur = $string[$x++] ?? '';
             if ($cur === '>') {
-                $value = $this->sanitizeExpression($this->parseValue($string, $x, [',', ']']));
+                $value = $this->sanitizeExpression($this->parseValue($string, $x, [',', ']'])[0]);
                 $x++;
             } elseif ($cur === ',' || $cur === ']' || $cur === '') {
                 $value = $key;
@@ -410,7 +397,7 @@ abstract class ConverterAbstract
         $x = 0;
         $final = '';
         while (1) {
-            $final .= $this->parseValue($string, $x, ['|']);
+            $final .= $this->parseValue($string, $x, ['|'])[0];
             $x++;
             if (($string[$x] ?? '') === '|') {
                 $final .= '||';
@@ -436,7 +423,7 @@ abstract class ConverterAbstract
         for (; $x < strlen($string); $x++) {
             $cur = $string[$x];
             if ($state === self::STATE_ARGS) {
-                $filter_args []= $this->sanitizeExpression($this->parseValue($string, $x, [',', ':', ')', '|']));
+                $filter_args []= $this->sanitizeExpression($this->parseValue($string, $x, [',', ':', ')', '|'])[0]);
                 if (($string[$x] ?? '') === ')') {
                     $x++;
                 }
@@ -475,7 +462,7 @@ abstract class ConverterAbstract
         $final = [];
         $prev = '';
         for ($x = 0; $x < strlen($expression); $x++) {
-            $cur = $this->parseValue($expression, $x, [' ']);
+            [$cur] = $this->parseValue($expression, $x, [' ']);
             if ($prev === '===') {
                 $final []= "is same as($cur)";
             } elseif ($prev === '!==') {
