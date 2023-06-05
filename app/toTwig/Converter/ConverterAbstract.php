@@ -188,7 +188,11 @@ abstract class ConverterAbstract
             }
             if ($prevDelim === '.') {
                 array_pop($final);
-                $value = array_pop($final).'.'.$value;
+                if ($value[0] === '$') {
+                    $value = 'attribute('.array_pop($final).', '.$value.')';
+                } else {
+                    $value = array_pop($final).'.'.$value;
+                }
             }
             $final []= $this->sanitizeValue($value);
             $final []= $delimNew;
