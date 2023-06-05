@@ -161,6 +161,15 @@ abstract class ConverterAbstract
         '->' => '.',
     ];
     private function splitSanitize(string $string): string {
+        $hasConcat = false;
+        for ($x = 0; $x < strlen($string); $x++) {
+            [, $delim] = $this->parseValue($string, $x, self::TOKENS);
+            if ($delim === '~') {
+                $hasConcat = true;
+                break;
+            }
+        }
+
         $final = [];
         $prevDelim = '';
         $prevValue = '';
@@ -168,8 +177,10 @@ abstract class ConverterAbstract
             [$value, $delim] = $this->parseValue($string, $x, self::TOKENS);
             $delimNew = trim($delim);
             $delimNew = self::DELIM_MAP[$delim] ?? $delim;
+
+            $delimCheck = $hasConcat ? trim($delim) : $delimNew;
             if (in_array($value[0] ?? '', ['"', "'"], true)) {
-                if ($delimNew === '.') {
+                if ($delimCheck === '.') {
                     $delimNew = '~';
                 } elseif ($prevDelim === '.') {
                     array_pop($final);
@@ -177,7 +188,7 @@ abstract class ConverterAbstract
                     $prevDelim = ' ~ ';
                 }
             } elseif (in_array($prevValue[0] ?? '', ['"', "'"], true)) {
-                if ($delimNew === '.') {
+                if ($delimCheck === '.') {
                     $delimNew = '~';
                 }
             }
@@ -198,7 +209,7 @@ abstract class ConverterAbstract
             }
             $final []= $this->sanitizeValue($value);
             $final []= $delimNew;
-            $prevDelim = $delimNew;
+            $prevDelim = $hasConcat ? trim($delim) : $delimNew;
             $prevValue = $value;
         }
         return implode('', $final);
