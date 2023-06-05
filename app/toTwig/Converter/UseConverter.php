@@ -34,7 +34,7 @@ class UseConverter extends ConverterAbstract
         return $content->replaceOpenTag(
             $addIf ? 'useif' : 'use',
             function ($matches) use ($addIf) {
-                [$value, $key] = $this->splitParsing($matches, 'as');
+                [$value, $key] = $this->splitParsing($matches, ' as ');
                 $value = $this->sanitizeExpression($value);
 
                 $keys = explode(',', $key);

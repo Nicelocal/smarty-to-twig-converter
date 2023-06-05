@@ -448,7 +448,7 @@ abstract class ConverterAbstract
             $append_filter($filter_name, $filter_args);
         }
         if ($root) {
-            if ($last_filter === 'esc' || $last_filter === 'escape("html")') {
+            if ($last_filter === 'esc' || $last_filter === 'escape("html")' || $last_filter === 'htmlspecialchars') {
                 array_pop($final);
             } elseif ($last_filter !== 'raw' && $last_filter !== 'json_encode') {
                 return '('.implode('', $final).')|raw';
