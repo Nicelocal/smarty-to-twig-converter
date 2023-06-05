@@ -117,6 +117,8 @@ abstract class ConverterAbstract
 
     private const TOKENS = [
         ' ',
+        '++',
+        '--',
         '+',
         '?:',
         '*',
@@ -139,7 +141,8 @@ abstract class ConverterAbstract
         ':',
         '.',
         '->',
-        '~'
+        '~',
+        '='
     ];
 
     private const DELIM_MAP = [
@@ -170,6 +173,9 @@ abstract class ConverterAbstract
             }
         }
 
+        $assign_var = null;
+        $assign_opt = false;
+
         $final = [];
         $prevDelim = '';
         $prevValue = '';
@@ -195,7 +201,29 @@ abstract class ConverterAbstract
             if ($prevDelim === ' not ' && $value[0] !== '$') {
                 $value = '$'.$value;
             }
-            if ($delimNew !== ' ' && $delimNew !== '' && $delimNew !== '.') {
+            if ($delimNew === '=' || $delimNew === '++' || $delimNew === '--') {
+                if (($final[0]??'') === '' && ($final[1]??'') === ' ? ') {
+                    $assign_opt = true;
+                    array_shift($final);
+                    array_shift($final);
+                }
+                $assign_var = trim(implode('', $final).$this->sanitizeValue($value));
+                if ($delimNew !== '=') {
+                    if ($assign_opt) {
+                        $assign_opt = false;
+                        $tmp = "($assign_var|default(0))";
+                    } else {
+                        $tmp = $assign_var;
+                    }
+                }
+                $final = match ($delimNew) {
+                    '=' => [],
+                    '++' => ["$tmp + 1"],
+                    '--' => ["$tmp - 1"],
+                };
+                continue;
+            }
+            if ($delimNew !== ' ' && $delimNew !== '' && $delimNew !== '.' && $delimNew !== '++' && $delimNew !== '--') {
                 $delimNew = " $delimNew ";
             }
             if ($prevDelim === '.') {
@@ -211,6 +239,13 @@ abstract class ConverterAbstract
             $final []= $delimNew;
             $prevDelim = $hasConcat ? trim($delim) : $delimNew;
             $prevValue = $value;
+        }
+        if ($assign_var) {
+            if ($assign_opt) {
+                return "set $assign_var = $assign_var|default(".implode('', $final).')';
+            } else {
+                return "set $assign_var = ".implode('', $final);
+            }
         }
         return implode('', $final);
     }
@@ -301,7 +336,7 @@ abstract class ConverterAbstract
 
         $string = $this->convertFunctionArguments($string);
         $string = $this->convertArrayKey($string);
-        $string = $this->convertFilters($string);
+        [$string] = $this->convertFilters($string);
         $string = $this->convertIdentical($string);
 
         return $string;
@@ -409,7 +444,7 @@ abstract class ConverterAbstract
      *   smarty: [{ "foo"|smarty_bar) }]
      *   twig:   {{ "foo"|twig_bar }}
      */
-    private function convertFilters(string $string, bool $root = false): string
+    private function convertFilters(string $string, bool $root = false): array
     {
         $x = 0;
         $final = '';
@@ -468,11 +503,11 @@ abstract class ConverterAbstract
             if ($last_filter === 'esc' || $last_filter === 'escape("html")' || $last_filter === 'htmlspecialchars') {
                 array_pop($final);
             } elseif ($last_filter !== 'raw' && $last_filter !== 'json_encode') {
-                return '('.implode('', $final).')|raw';
+                return [implode('', $final), true];
             }
         }
         //var_dump($string, $final);
-        return implode('', $final);
+        return [implode('', $final), false];
     }
     private function convertIdentical(string $expression): string
     {
@@ -507,11 +542,16 @@ abstract class ConverterAbstract
      */
     protected function sanitizeExpression(string $expression, bool $root = false): string
     {
-        $expression = $this->convertFilters($expression, $root);
+        [$expression, $needs_raw] = $this->convertFilters($expression, $root);
 
         $expression = $this->splitSanitize($expression);
 
-        return $this->convertIdentical($expression);
+        $expression = $this->convertIdentical($expression);
+        
+        if ($needs_raw && !str_starts_with(trim($expression), 'set ')) {
+            $expression = "($expression)|raw";
+        }
+        return $expression;
     }
 
     /**
