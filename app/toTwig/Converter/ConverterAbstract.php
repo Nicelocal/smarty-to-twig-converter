@@ -138,7 +138,8 @@ abstract class ConverterAbstract
         '?',
         ':',
         '.',
-        '->'
+        '->',
+        '~'
     ];
 
     private const DELIM_MAP = [
@@ -188,10 +189,11 @@ abstract class ConverterAbstract
             }
             if ($prevDelim === '.') {
                 array_pop($final);
+                array_pop($final);
                 if ($value[0] === '$') {
-                    $value = 'attribute('.array_pop($final).', '.$value.')';
+                    $value = 'attribute('.$prevValue.', '.$value.')';
                 } else {
-                    $value = array_pop($final).'.'.$value;
+                    $value = $prevValue.'.'.$value;
                 }
             }
             $final []= $this->sanitizeValue($value);
