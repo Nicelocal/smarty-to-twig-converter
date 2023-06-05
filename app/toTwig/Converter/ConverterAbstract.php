@@ -160,7 +160,6 @@ abstract class ConverterAbstract
         '->' => '.',
     ];
     private function splitSanitize(string $string): string {
-        var_dump($string);
         $final = [];
         $prevDelim = '';
         $prevValue = '';
@@ -174,11 +173,15 @@ abstract class ConverterAbstract
                 } elseif ($prevDelim === '.') {
                     array_pop($final);
                     $final []= ' ~ ';
+                    $prevDelim = ' ~ ';
                 }
             } elseif (in_array($prevValue[0] ?? '', ['"', "'"], true)) {
                 if ($delimNew === '.') {
                     $delimNew = '~';
                 }
+            }
+            if ($prevDelim === ' not ' && $value[0] !== '$') {
+                $value = '$'.$value;
             }
             if ($delimNew !== ' ' && $delimNew !== '' && $delimNew !== '.') {
                 $delimNew = " $delimNew ";
@@ -186,9 +189,6 @@ abstract class ConverterAbstract
             if ($prevDelim === '.') {
                 array_pop($final);
                 $value = array_pop($final).'.'.$value;
-                if ($delimNew !== '.') {
-                    $value = $this->sanitizeValue($value);
-                }
             }
             $final []= $this->sanitizeValue($value);
             $final []= $delimNew;
