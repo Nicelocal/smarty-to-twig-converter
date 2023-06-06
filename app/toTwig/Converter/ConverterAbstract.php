@@ -229,7 +229,10 @@ abstract class ConverterAbstract
             if ($prevDelim === '.') {
                 array_pop($final);
                 array_pop($final);
-                if ($value[0] === '$') {
+                if ($value[0] === '$' || (is_numeric($value[0]) && !is_numeric($prevValue))) {
+                    if ($value[0] !== '$') {
+                        $value = '"'.$value.'"';
+                    }
                     $value = 'attribute('.$prevValue.', '.$value.')';
                 } else {
                     $value = $prevValue.'.'.$value;
@@ -334,7 +337,6 @@ abstract class ConverterAbstract
 
         $string = $this->convertFunctionArguments($string);
         $string = $this->convertArrayKey($string);
-        [$string] = $this->convertFilters($string);
         $string = $this->convertIdentical($string);
 
         $string = ltrim($string, '$£');
@@ -452,77 +454,6 @@ abstract class ConverterAbstract
 
     private const STATE_FILTER = 0;
     private const STATE_ARGS = 1;
-    /**
-     * Handle translation of filters
-     * For example:
-     *   smarty: [{ "foo"|smarty_bar) }]
-     *   twig:   {{ "foo"|twig_bar }}
-     */
-    private function convertFilters(string $string, bool $root = false): array
-    {
-        $x = 0;
-        $final = '';
-        while (1) {
-            $final .= $this->parseValue($string, $x, ['|'])[0];
-            $x++;
-            if (($string[$x] ?? '') === '|') {
-                $final .= '||';
-                $x++;
-            } else {
-                break;
-            }
-        }
-        $final = [$final];
-        
-        $last_filter = '';
-        $append_filter = function (string &$filter_name, array &$filter_args) use (&$final, &$last_filter) {
-            $filter_name = FilterNameMap::getConvertedFilterName(ltrim($filter_name, '@'));
-            $last_filter = $filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
-            $final []= '|'.$last_filter;
-            $filter_name = '';
-            $filter_args = [];
-        };
-
-        $state = self::STATE_FILTER;
-        $filter_name = '';
-        $filter_args = [];
-        for (; $x < strlen($string); $x++) {
-            $cur = $string[$x];
-            if ($state === self::STATE_ARGS) {
-                $filter_args []= $this->sanitizeExpression($this->parseValue($string, $x, [',', ':', ')', '|'])[0]);
-                if (($string[$x] ?? '') === ')') {
-                    $x++;
-                }
-                if (($string[$x] ?? '') === '|') {
-                    $append_filter($filter_name, $filter_args);
-                    $state = self::STATE_FILTER;
-                }
-            } elseif ($state === self::STATE_FILTER) {
-                if ($cur === ':' || $cur === '(') {
-                    $state = self::STATE_ARGS;
-                } elseif ($cur === '|') {
-                    $append_filter($filter_name, $filter_args);
-                    $state = self::STATE_FILTER;
-                } else {
-                    $filter_name .= $cur;
-                }
-            } else {
-                throw new AssertionError("Unreachable!");
-            }
-        }
-        if (trim($filter_name) !== '') {
-            $append_filter($filter_name, $filter_args);
-        }
-        if ($root) {
-            if ($last_filter === 'esc' || $last_filter === 'escape' || $last_filter === 'escape("html")' || $last_filter === 'htmlspecialchars') {
-                array_pop($final);
-            } elseif ($last_filter !== 'raw' && $last_filter !== 'json_encode') {
-                return [implode('', $final), true];
-            }
-        }
-        //var_dump($string, $final);
-        return [implode('', $final), false];
-    }
     private function convertIdentical(string $expression): string
     {
         $final = [];
@@ -554,11 +485,75 @@ abstract class ConverterAbstract
      *   $matches[2] should contain a string with one of following characters: +, -, >, <, *, /, %, &&, ||
      *   $matches[3] should contain a string with second part of an expression i.e. $b
      */
-    protected function sanitizeExpression(string $expression, bool $root = false): string
+    protected function sanitizeExpression(string $string, bool $root = false): string
     {
-        [$expression, $needs_raw] = $this->convertFilters($expression, $root);
+        $x = 0;
+        $final = '';
+        while (1) {
+            $final .= $this->parseValue($string, $x, ['|'])[0];
+            $x++;
+            if (($string[$x] ?? '') === '|') {
+                $final .= '||';
+                $x++;
+            } else {
+                break;
+            }
+        }
+        $final = $this->splitSanitize($final);
+        $final = [$final];
+        
+        $last_filter = '';
+        $append_filter = function (string &$filter_name, array &$filter_args) use (&$final, &$last_filter) {
+            $filter_name = FilterNameMap::getConvertedFilterName(ltrim($filter_name, '@'));
+            $last_filter = $filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
+            $final []= '|'.$last_filter;
+            $filter_name = '';
+            $filter_args = [];
+        };
 
-        $expression = $this->splitSanitize($expression);
+        $state = self::STATE_FILTER;
+        $filter_name = '';
+        $filter_args = [];
+        for (; $x < strlen($string); $x++) {
+            $cur = $string[$x];
+            if ($state === self::STATE_ARGS) {
+                $filter_args []= $this->sanitizeExpression($this->parseValue($string, $x, [',', ':', ')', '|'])[0]);
+                if (($string[$x] ?? '') === ')') {
+                    $x++;
+                }
+                if (($string[$x] ?? '') === '|') {
+                    $append_filter($filter_name, $filter_args);
+                    $state = self::STATE_FILTER;
+                }
+            } elseif ($state === self::STATE_FILTER) {
+                if ($cur === ':' || $cur === '(') {
+                    $state = self::STATE_ARGS;
+                } elseif ($cur === ' ') {
+                    $append_filter($filter_name, $filter_args);
+                    break;
+                } elseif ($cur === '|') {
+                    $append_filter($filter_name, $filter_args);
+                    $state = self::STATE_FILTER;
+                } else {
+                    $filter_name .= $cur;
+                }
+            } else {
+                throw new AssertionError("Unreachable!");
+            }
+        }
+        if (trim($filter_name) !== '') {
+            $append_filter($filter_name, $filter_args);
+        }
+        $trailer = $this->splitSanitize(substr($string, $x));
+        $needs_raw = false;
+        if ($root) {
+            if ($last_filter === 'esc' || $last_filter === 'escape' || $last_filter === 'escape("html")' || $last_filter === 'htmlspecialchars') {
+                array_pop($final);
+            } elseif ($last_filter !== 'raw' && $last_filter !== 'json_encode') {
+                $needs_raw = true;
+            }
+        }
+        $expression = implode('', $final).$trailer;
 
         $expression = $this->convertIdentical($expression);
         
