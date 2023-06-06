@@ -20,18 +20,19 @@ class CaptureConverter extends ConverterAbstract
 
     public function convert(TokenTag $content): TokenTag
     {
-        return $content->replaceOpenTag('capture',
+        $content = $content->replaceOpenTag(
+            'capture',
             function ($matches) {
                 $attr = $this->getAttributes($matches);
                 if (isset($attr['name'])) {
                     $attr['name'] = $this->sanitizeVariableName($attr['name']);
-                    $string = '{% capture name = ":name" %}';
+                    $string = '{% set __capture_:name %}';
                 } elseif (isset($attr['append'])) {
                     $attr['append'] = $this->sanitizeVariableName($attr['append']);
-                    $string = '{% capture append = ":append" %}';
+                    throw new AssertionError("Can't append!");
                 } elseif (isset($attr['assign'])) {
                     $attr['assign'] = $this->sanitizeVariableName($attr['assign']);
-                    $string = '{% capture assign = ":assign" %}';
+                    $string = '{% set :assign %}';
                 } else {
                     throw new AssertionError("Unreachable!");
                 }
@@ -40,7 +41,8 @@ class CaptureConverter extends ConverterAbstract
             }
         )->replaceCloseTag(
             'capture',
-            'endcapture'
+            'endset'
         );
+        return $content->replace(str_replace('quicky.capture.', '__capture_', $content->content));
     }
 }
