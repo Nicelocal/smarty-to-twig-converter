@@ -199,7 +199,7 @@ abstract class ConverterAbstract
                 }
             }
             if ($prevDelim === ' not ' && $value[0] !== '$') {
-                $value = '$'.$value;
+                $value = '£'.$value;
             }
             if ($delimNew === '=' || $delimNew === '++' || $delimNew === '--') {
                 if (($final[0]??'') === '' && ($final[1]??'') === ' ? ') {
@@ -332,12 +332,12 @@ abstract class ConverterAbstract
             $string = strtolower($string);
         }
 
-        $string = ltrim($string, '$');
-
         $string = $this->convertFunctionArguments($string);
         $string = $this->convertArrayKey($string);
         [$string] = $this->convertFilters($string);
         $string = $this->convertIdentical($string);
+
+        $string = ltrim($string, '$£');
 
         return $string;
     }
@@ -357,6 +357,12 @@ abstract class ConverterAbstract
             $x++;
         } else {
             $final .= $string[$x++] ?? '';
+        }
+        if ($final[0] === '$' && $final[strlen($final)-1] === '(' && !str_contains($final, '|')
+            && !str_contains($final, '>')
+            && !str_contains($final, '.')) {
+            $string = 'call_user_func('.substr($final, 0, -1).', '.substr($string, $x);
+            return $this->convertFunctionArguments($string);
         }
         while ($x < strlen($string)) {
             [$temp] = $this->parseValue($string, $x, [',', ')']);
