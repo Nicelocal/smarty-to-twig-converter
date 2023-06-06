@@ -360,7 +360,8 @@ abstract class ConverterAbstract
         }
         if ($final[0] === '$' && $final[strlen($final)-1] === '(' && !str_contains($final, '|')
             && !str_contains($final, '>')
-            && !str_contains($final, '.')) {
+            && !str_contains($final, '.')
+            && substr($final, 0, -1) !== '$gmdate') {
             $string = 'call_user_func('.substr($final, 0, -1).', '.substr($string, $x);
             return $this->convertFunctionArguments($string);
         }
