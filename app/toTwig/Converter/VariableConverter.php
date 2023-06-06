@@ -31,8 +31,14 @@ class VariableConverter extends ConverterAbstract
         if (ltrim($content->content)[0] === '/') {
             throw new AssertionError("Unrecognized close tag ".$content->content);
         }
+        $sanitized = $this->sanitizeExpression($content->content, true);
+        if (str_starts_with($sanitized, 'set ')) {
+            $sanitized = '{% '.$sanitized.' %}';
+        } else {
+            $sanitized = '{{ '.$sanitized.' }}';
+        }
         return $content->replace(
-            '{{ '.$this->sanitizeExpression($content->content, true).' }}',
+            $sanitized,
             true
         );
     }

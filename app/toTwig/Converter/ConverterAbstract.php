@@ -415,13 +415,16 @@ abstract class ConverterAbstract
     {
         $x = 0;
         $k = 0;
+        $is_list = true;
         $arr = [];
+        $list = [];
         while ($x < strlen($string)) {
             $key = $this->sanitizeExpression($this->parseValue($string, $x, ['=>', ',', ']'])[0]);
             $cur = $string[$x++] ?? '';
             if ($cur === '>') {
                 $value = $this->sanitizeExpression($this->parseValue($string, $x, [',', ']'])[0]);
                 $x++;
+                $is_list = false;
             } elseif ($cur === ',' || $cur === ']' || $cur === '') {
                 $value = $key;
                 $key = $k++;
@@ -429,9 +432,13 @@ abstract class ConverterAbstract
                 throw new AssertionError('Unreachable');
             }
             $arr []= "$key: $value";
+            $list []= "$value";
         }
         if (!$arr) {
-            return '{}';
+            return '[]';
+        }
+        if ($is_list) {
+            return '['.implode(', ', $list).']';
         }
         return '{'.implode(', ', $arr).'}';
     }
