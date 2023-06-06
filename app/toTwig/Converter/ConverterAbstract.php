@@ -440,6 +440,9 @@ abstract class ConverterAbstract
             } else {
                 throw new AssertionError('Unreachable');
             }
+            if (!preg_match('/^(\'|")[_\w0]+(\'|")$/', $key)) {
+                $key = "($key)";
+            }
             $arr []= "$key: $value";
             $list []= "$value";
         }
