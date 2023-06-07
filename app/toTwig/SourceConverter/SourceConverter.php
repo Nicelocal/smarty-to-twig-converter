@@ -22,7 +22,7 @@ use toTwig\SourceConverter\Token\TokenTag;
 /**
  * Class SourceConverter
  */
-abstract class SourceConverter
+class SourceConverter
 {
     private Differ $diff;
 
@@ -50,7 +50,7 @@ abstract class SourceConverter
      *
      * @return ConversionResult
      */
-    protected function convertTemplate(string $templateToConvert, bool $diff, array $converters): ConversionResult
+    public function convertTemplate(string $templateToConvert, bool $diff, array $converters): ConversionResult
     {
         $result = new ConversionResult();
         $result->setOriginalTemplate($templateToConvert);
