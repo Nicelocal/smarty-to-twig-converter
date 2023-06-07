@@ -8,7 +8,7 @@
         "symfony/console": "^5.0.4",
         "symfony/filesystem": "^5.0.4",
         "symfony/finder": "^5.0.4",
-        "sebastian/diff": "^4.0.4",
+        "sebastian/diff": "^5",
         "ext-dom": "*",
         "nikic/php-parser": "^4.15"
     },
