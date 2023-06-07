@@ -35,15 +35,6 @@ class SourceConverter
     }
 
     /**
-     * @param bool                $dryRun
-     * @param bool                $diff
-     * @param ConverterAbstract[] $converters
-     *
-     * @return ConversionResult[]
-     */
-    abstract public function convert(bool $dryRun, bool $diff, array $converters): array;
-
-    /**
      * @param string              $templateToConvert
      * @param bool                $diff
      * @param ConverterAbstract[] $converters
