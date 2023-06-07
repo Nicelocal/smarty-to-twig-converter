@@ -11,7 +11,6 @@
 
 namespace toTwig\Console\Command;
 
-use Doctrine\DBAL\DriverManager;
 use DOMDocument;
 use InvalidArgumentException;
 use Symfony\Component\Console\Command\Command;
@@ -24,7 +23,6 @@ use toTwig\Config\ConfigInterface;
 use toTwig\ConversionResult;
 use toTwig\Converter;
 use toTwig\Config\Config;
-use toTwig\SourceConverter\DatabaseConverter;
 use toTwig\SourceConverter\SourceConverter;
 use toTwig\SourceConverter\FileConverter;
 
@@ -54,11 +52,11 @@ class ConvertCommand extends Command
         $this
             ->setName('convert')
             ->setDefinition($this->getDefinitions())
-            ->setDescription('Convert a directory, file or database entities.')
+            ->setDescription('Convert a directory or file.')
             ->setHelp(
                 <<<EOF
            
-The convert command tries to fix as much coding standards problems as possible on a given file, directory or database.
+The convert command tries to fix as much coding standards problems as possible on a given file or directory.
 Converter can work with files and directories:
 
 	<info>php toTwig convert --path=/path/to/dir</info>
@@ -69,21 +67,6 @@ By default files with .twig extension will be created. To specify different exte
 
     <info>php toTwig convert --path=/path/to/dir --ext=.js.twig</info>
     
-<comment>--database</comment>
-The --database parameter gets database doctrine-like URL to convert database entries.
-
-    <info>php toTwig convert --database="mysql://user:password@localhost/db"</info>
-
-<comment>--database-columns</comment>
-The --database-columns option lets you choose tables columns to be converted
-(the table column names has to be specified in table_a.column_b format and separated by comma):
-
-    <info>php toTwig convert --database="..." --database-columns=oxactions.OXLONGDESC,oxcontents.OXCONTENT</info>
-    
-You can also blacklist the table columns you don't want using "-" before column name
-
-    <info>php toTwig convert --database="..." --database-columns=-oxactions.OXLONGDESC_1,-oxcontents.OXCONTENT_1</info>
-
 <comment>--converters</comment>
 The --converters option lets you choose which converters to apply (the converter names must be separated by a comma):
 
@@ -101,7 +84,7 @@ Will create diff for all files
 
 <comment>--config-path</comment>
 Instead of building long line commands it is possible to inject PHP configuration code. Two example files are included
-in main directory: config_file.php and config_database.php. To include config file use --config-path parameter:
+in main directory: config_file.php. To include config file use --config-path parameter:
 
     <info>php toTwig convert --config-path=config_file.php</info>
 
@@ -119,18 +102,6 @@ EOF
                 '',
                 InputOption::VALUE_OPTIONAL,
                 'The path'
-            ),
-            new InputOption(
-                'database',
-                '',
-                InputOption::VALUE_REQUIRED,
-                'Database parameters'
-            ),
-            new InputOption(
-                'database-columns',
-                '',
-                InputOption::VALUE_REQUIRED,
-                'Database columns to convert'
             ),
             new InputOption(
                 'config',
@@ -222,18 +193,11 @@ EOF
 
     private function checkInputConstraints(InputInterface $input): void
     {
-        if ($input->getOption('path') && $input->getOption('database')) {
-            throw new InvalidOptionException(
-                "Only one of '--path' or '--database' options should be defined."
-            );
-        }
-
         if ($input->getOption('path') == null &&
-            $input->getOption('database') == null &&
             $input->getOption('config-path') == null
         ) {
             throw new InvalidOptionException(
-                "One of '--path', '--database' or '--config-path' options should be defined."
+                "One of '--path' or '--config-path' options should be defined."
             );
         }
     }
@@ -283,12 +247,6 @@ EOF
             $sourceConverter
                 ->setPath($path)
                 ->setOutputExtension($input->getOption('ext'));
-        } elseif ($databaseUrl = $input->getOption('database')) {
-            $connection = DriverManager::getConnection(['url' => $databaseUrl]);
-            $sourceConverter = new DatabaseConverter($connection);
-            if ($input->getOption('database-columns')) {
-                $sourceConverter->filterColumns(explode(',', $input->getOption('database-columns')));
-            }
         }
 
         $config

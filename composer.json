@@ -9,7 +9,6 @@
         "symfony/filesystem": "^5.0.4",
         "symfony/finder": "^5.0.4",
         "sebastian/diff": "^4.0.4",
-        "doctrine/dbal": "^2.13",
         "ext-dom": "*",
         "nikic/php-parser": "^4.15"
     },
