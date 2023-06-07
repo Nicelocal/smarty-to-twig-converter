@@ -12,6 +12,7 @@
 namespace toTwig\SourceConverter;
 
 use SebastianBergmann\Diff\Differ;
+use SebastianBergmann\Diff\Output\UnifiedDiffOutputBuilder;
 use toTwig\ConversionResult;
 use toTwig\Converter\ConverterAbstract;
 use toTwig\SourceConverter\Token\TokenComment;
@@ -30,7 +31,7 @@ abstract class SourceConverter
      */
     public function __construct()
     {
-        $this->diff = new Differ();
+        $this->diff = new Differ(new UnifiedDiffOutputBuilder());
     }
 
     /**

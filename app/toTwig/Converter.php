@@ -12,6 +12,7 @@
 namespace toTwig;
 
 use SebastianBergmann\Diff\Differ;
+use SebastianBergmann\Diff\Output\UnifiedDiffOutputBuilder;
 use Symfony\Component\Finder\Finder;
 use toTwig\Config\ConfigInterface;
 use toTwig\SourceConverter\SourceConverter;
@@ -38,7 +39,7 @@ class Converter
      */
     public function __construct()
     {
-        $this->diff = new Differ();
+        $this->diff = new Differ(new UnifiedDiffOutputBuilder());
     }
 
     /**
