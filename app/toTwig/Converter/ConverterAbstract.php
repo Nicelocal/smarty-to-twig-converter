@@ -164,10 +164,10 @@ abstract class ConverterAbstract
         '->' => '.',
     ];
     private static function isString(string $string): bool {
-        return in_array($string[0], ['"', "'"], true);
+        return in_array($string[0] ?? '', ['"', "'"], true);
     }
     private static function isVar(string $string): bool {
-        return $string[0] === '$';
+        return ($string[0] ?? '') === '$';
     }
     private function splitSanitize(string $string): string {
         $assign_var = null;
@@ -406,7 +406,12 @@ abstract class ConverterAbstract
                             throw new AssertionError();
                         }
                         $timestamp = $args[1] ?? '"now"';
-                        $final .= $timestamp."|date($args[0])";
+                        $final .= $timestamp."|date({$args[0]})";
+                    } elseif ($function_name === 'defined') {
+                        if (count($args) > 1) {
+                            throw new AssertionError();
+                        }
+                        $final .= trim($args[0], '"')." is defined";
                     } else {
                         $final .= $function_name.'('.implode(',', $args).')';
                     }
