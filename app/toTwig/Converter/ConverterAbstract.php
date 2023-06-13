@@ -163,9 +163,6 @@ abstract class ConverterAbstract
 
         '->' => '.',
     ];
-    private static function isVarOrString(string $string): bool {
-        return in_array($string[0], ['$', '"', "'"], true);
-    }
     private static function isString(string $string): bool {
         return in_array($string[0], ['"', "'"], true);
     }
@@ -201,7 +198,11 @@ abstract class ConverterAbstract
             if ($prevDelim === '->') {
                 array_pop($final);
                 array_pop($final);
-                $value = $prevValue.'.'.$value;
+                if ($value[0] === '$') {
+                    $value = "attribute($prevValue, $value)";
+                } else {
+                    $value = $prevValue.'.'.$value;
+                }
             }
             if ($prevDelim === '.') {
                 array_pop($final);
