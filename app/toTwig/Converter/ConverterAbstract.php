@@ -184,7 +184,7 @@ abstract class ConverterAbstract
             $delimNew = trim($delim);
             $delimNew = self::DELIM_MAP[$delim] ?? $delim;
 
-            $delimCheck = $hasConcat ? trim($delim) : $delimNew;
+            $delimCheck = trim($delim);
             if (in_array($value[0] ?? '', ['"', "'"], true)) {
                 if ($delimCheck === '.') {
                     $delimNew = '~';
@@ -198,7 +198,7 @@ abstract class ConverterAbstract
                     $delimNew = '~';
                 }
             }
-            if ($prevDelim === ' not ' && $value[0] !== '$') {
+            if ($prevDelim === '!' && $value[0] !== '$') {
                 $value = '£'.$value;
             }
             if ($delimNew === '=' || $delimNew === '++' || $delimNew === '--') {
@@ -226,21 +226,19 @@ abstract class ConverterAbstract
             if ($delimNew !== ' ' && $delimNew !== '' && $delimNew !== '.' && $delimNew !== '++' && $delimNew !== '--') {
                 $delimNew = " $delimNew ";
             }
+            if ($prevDelim === '->') {
+                array_pop($final);
+                array_pop($final);
+                $value = $prevValue.'.'.$value;
+            }
             if ($prevDelim === '.') {
                 array_pop($final);
                 array_pop($final);
-                if ($value[0] === '$' || (is_numeric($value[0]) && !is_numeric($prevValue))) {
-                    if ($value[0] !== '$') {
-                        $value = '"'.$value.'"';
-                    }
-                    $value = 'attribute('.$prevValue.', '.$value.')';
-                } else {
-                    $value = $prevValue.'.'.$value;
-                }
+                $value = $prevValue.'.'.$value;
             }
             $final []= $this->sanitizeValue($value);
             $final []= $delimNew;
-            $prevDelim = $hasConcat ? trim($delim) : $delimNew;
+            $prevDelim = $delimCheck;
             $prevValue = $value;
         }
         if ($assign_var) {
@@ -353,31 +351,60 @@ abstract class ConverterAbstract
     private function convertFunctionArguments(string $string): string
     {
         $x = 0;
-        [$final] = $this->parseValue($string, $x, ['(']);
-        if ($is_array = trim($final) === 'array') {
-            $final = '[';
-            $x++;
-        } else {
-            $final .= $string[$x++] ?? '';
+        $final = '';
+
+        [$function_name] = $this->parseValue($string, $x, ['(']);
+        if ($x++ === strlen($string)) {
+            return $string;
         }
-        if ($final[0] === '$' && $final[strlen($final)-1] === '(' && !str_contains($final, '|')
-            && !str_contains($final, '>')
-            && !str_contains($final, '.')
-            && substr($final, 0, -1) !== '$gmdate') {
-            $string = 'call_user_func('.substr($final, 0, -1).', '.substr($string, $x);
+        
+        $function_name = trim($function_name);
+        
+        if (($function_name[0] ?? '') === '$' && !str_contains($function_name, '|')
+            && !str_contains($function_name, '>')
+            && !str_contains($function_name, '.')
+            && substr($function_name, 0, -1) !== '$gmdate') {
+            $string = "call_user_func($function_name, ".substr($string, $x);
             return $this->convertFunctionArguments($string);
         }
-        while ($x < strlen($string)) {
-            [$temp] = $this->parseValue($string, $x, [',', ')']);
-            if (!$is_array) {
-                $temp = $this->sanitizeExpression($temp);
+
+        do {
+            $args = [];
+            while ($x < strlen($string)) {
+                [$temp, $delim] = $this->parseValue($string, $x, [',', ')']);
+                if ($function_name !== 'array') {
+                    $temp = $this->sanitizeExpression($temp);
+                }
+                $args []= $temp;
+
+                $x++;
+                if ($delim === ',') {
+                    // OK
+                } elseif ($delim === ')') {
+                    if ($function_name === 'array') {
+                        $final .= '['.implode(',', $args).']';
+                    } elseif ($function_name === 'date') {
+                        if (count($args) > 2) {
+                            throw new AssertionError();
+                        }
+                        $timestamp = $args[1] ?? '"now"';
+                        $final .= $timestamp."|date($args[0])";
+                    } else {
+                        $final .= $function_name.'('.implode(',', $args).')';
+                    }
+                    $args = [];
+                    break;
+                } else {
+                    throw new AssertionError("Unreachable!");
+                }
             }
-            $final .= $temp;
-            $final .= $string[$x++] ?? '';
-        }
-        if ($is_array) {
-            $final = rtrim($final, ')');
-        }
+
+            [$function_name] = $this->parseValue($string, $x, ['(']);
+            $function_name = trim($function_name);
+            if ($x++ === strlen($string)) {
+                $final .= $function_name;
+            }
+        } while ($x < strlen($string));
         return $final;
     }
 
@@ -440,7 +467,7 @@ abstract class ConverterAbstract
             } else {
                 throw new AssertionError('Unreachable');
             }
-            if (!preg_match('/^(\'|")[_\w0]+(\'|")$/', $key)) {
+            if (!preg_match('/^\d+|((\'|")[_\w0]+(\'|"))$/', $key)) {
                 $key = "($key)";
             }
             $arr []= "$key: $value";
