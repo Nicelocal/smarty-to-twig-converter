@@ -163,41 +163,68 @@ abstract class ConverterAbstract
 
         '->' => '.',
     ];
+    private static function isVarOrString(string $string): bool {
+        return in_array($string[0], ['$', '"', "'"], true);
+    }
+    private static function isString(string $string): bool {
+        return in_array($string[0], ['"', "'"], true);
+    }
+    private static function isVar(string $string): bool {
+        return $string[0] === '$';
+    }
     private function splitSanitize(string $string): string {
-        $hasConcat = false;
-        for ($x = 0; $x < strlen($string); $x++) {
-            [, $delim] = $this->parseValue($string, $x, self::TOKENS);
-            if ($delim === '~') {
-                $hasConcat = true;
-                break;
-            }
-        }
-
         $assign_var = null;
         $assign_opt = false;
+
+        $pairs = [];
+        $prevValue = '';
+        $prevDelim = '';
+        for ($x = 0; $x < strlen($string); $x++) {
+            [$value, $delim] = $this->parseValue($string, $x, self::TOKENS);
+            if (trim($value) === '' && $prevDelim === ' ') {
+                array_pop($pairs);
+                $value = $prevValue;
+            }
+            $pairs []= [$value, $delim];
+            $prevValue = $value;
+            $prevDelim = $delim;
+        }
 
         $final = [];
         $prevDelim = '';
         $prevValue = '';
-        for ($x = 0; $x < strlen($string); $x++) {
-            [$value, $delim] = $this->parseValue($string, $x, self::TOKENS);
+        foreach ($pairs as [$value, $delim]) {
             $delimNew = trim($delim);
             $delimNew = self::DELIM_MAP[$delim] ?? $delim;
 
             $delimCheck = trim($delim);
-            if (in_array($value[0] ?? '', ['"', "'"], true)) {
-                if ($delimCheck === '.') {
-                    $delimNew = '~';
-                } elseif ($prevDelim === '.') {
-                    array_pop($final);
+            if ($prevDelim === '->') {
+                array_pop($final);
+                array_pop($final);
+                $value = $prevValue.'.'.$value;
+            }
+            if ($prevDelim === '.') {
+                array_pop($final);
+                array_pop($final);
+
+                if ((
+                    self::isString($prevValue)
+                    || self::isString($value)
+                ) || (
+                    self::isVar($prevValue)
+                    && self::isVar($value)
+                )) {
+                    $final []= $this->sanitizeValue($prevValue);
                     $final []= ' ~ ';
-                    $prevDelim = ' ~ ';
-                }
-            } elseif (in_array($prevValue[0] ?? '', ['"', "'"], true)) {
-                if ($delimCheck === '.') {
-                    $delimNew = '~';
+                } else {
+                    if (is_numeric($value[0]) && !is_numeric($prevValue)) {
+                        $value = "attribute($prevValue, \"$value\")";
+                    } else {
+                        $value = $prevValue.'.'.$value;
+                    }
                 }
             }
+
             if ($prevDelim === '!' && $value[0] !== '$') {
                 $value = '£'.$value;
             }
@@ -225,16 +252,6 @@ abstract class ConverterAbstract
             }
             if ($delimNew !== ' ' && $delimNew !== '' && $delimNew !== '.' && $delimNew !== '++' && $delimNew !== '--') {
                 $delimNew = " $delimNew ";
-            }
-            if ($prevDelim === '->') {
-                array_pop($final);
-                array_pop($final);
-                $value = $prevValue.'.'.$value;
-            }
-            if ($prevDelim === '.') {
-                array_pop($final);
-                array_pop($final);
-                $value = $prevValue.'.'.$value;
             }
             $final []= $this->sanitizeValue($value);
             $final []= $delimNew;
