@@ -29,19 +29,12 @@ class ForConverter extends ConverterAbstract
             ->replaceOpenTag('foreachelse', fn () => '{% else %}');
         $content = $this->replaceForEach($content);
         $content = $this->replaceFor($content);
-        $content = $content->replaceOpenTag('iteration', fn () => 'loop.index0');
+        $content = $content->replaceOpenTag('index', fn () => 'loop.index0');
+        $content = $content->replaceOpenTag('iteration', fn () => 'loop.index');
+        $content = $content->replaceOpenTag('first', fn () => 'loop.first');
+        $content = $content->replaceOpenTag('last', fn () => 'loop.last');
 
-        $contentStr = $content->content;
-        foreach ([
-            'smarty\.foreach.*\.index' => 'loop.index0',
-            'smarty\.foreach.*\.iteration' => 'loop.index',
-            'smarty\.foreach.*\.first' => 'loop.first',
-            'smarty\.foreach.*\.last' => 'loop.last',
-        ] as $k => $v) {
-            $contentStr = preg_replace('/' . $k . '/', $v, $contentStr);
-        }
-
-        return $content->replace($contentStr);
+        return $content;
     }
 
     private function replaceForEach(TokenTag $content): TokenTag
