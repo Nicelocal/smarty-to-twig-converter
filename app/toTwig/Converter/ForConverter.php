@@ -38,7 +38,6 @@ class ForConverter extends ConverterAbstract
         ] as $in => $out) {
             $content = $content->replaceOpenTag($in, function (string $params) use ($out): string {
                 if (trim($params) !== '') {
-                    $return = $out;
                     if (!preg_match('/^(?:\s*)is(?:\s+(not))?\s+(even|odd|div)(?:\s+by\s(\d+))?(.*)$/', $params, $q)) {
                         throw new AssertionError("No match!");
                     }
@@ -57,7 +56,7 @@ class ForConverter extends ConverterAbstract
                     };
                     $out = "($out)";
                     $out .= $rest;
-                    return '{{ '.$this->sanitizeExpression($out).' }}';
+                    return '{{ '.$this->sanitizeExpression($out, true).' }}';
                 }
                 return "{{ $out }}";
             });

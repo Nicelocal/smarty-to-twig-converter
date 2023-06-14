@@ -609,7 +609,7 @@ abstract class ConverterAbstract
             }
             if ($last_filter === 'esc' || $last_filter === 'escape' || $last_filter === 'escape("html")' || $last_filter === 'htmlspecialchars') {
                 array_pop($final);
-            } elseif ($last_filter !== 'raw' && $last_filter !== 'json_encode') {
+            } elseif ($last_filter !== 'raw') {
                 $needs_raw = true;
             }
         }
@@ -617,8 +617,10 @@ abstract class ConverterAbstract
 
         $expression = $this->convertIdentical($expression);
         
-        if ($needs_raw && !str_starts_with(trim($expression), 'set ')) {
-            $expression = "($expression)|raw";
+        if (!str_starts_with(trim($expression), 'set ')) {
+            if ($needs_raw) {
+                $expression = "($expression)|raw";
+            }
         }
         return $expression;
     }
