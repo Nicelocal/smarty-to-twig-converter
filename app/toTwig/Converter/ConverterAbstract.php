@@ -600,6 +600,13 @@ abstract class ConverterAbstract
         $trailer = $this->splitSanitize(substr($string, $x));
         $needs_raw = false;
         if ($root) {
+            if (count($final) === 1) {
+                $x = 0;
+                [$parsed] = $this->parseValue($final[0], $x, ['|', ...self::TOKENS]);
+                if ($x === strlen($final[0]) && $parsed[0] === '"') {
+                    throw new \RuntimeException("Only one string expression: {$string}");
+                }
+            }
             if ($last_filter === 'esc' || $last_filter === 'escape' || $last_filter === 'escape("html")' || $last_filter === 'htmlspecialchars') {
                 array_pop($final);
             } elseif ($last_filter !== 'raw' && $last_filter !== 'json_encode') {

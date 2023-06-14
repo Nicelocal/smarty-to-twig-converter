@@ -29,6 +29,7 @@ class ForConverter extends ConverterAbstract
             ->replaceOpenTag('foreachelse', fn () => '{% else %}');
         $content = $this->replaceForEach($content);
         $content = $this->replaceFor($content);
+        $content = $content->replaceOpenTag('iteration', fn () => 'loop.index0');
 
         $contentStr = $content->content;
         foreach ([
