@@ -11,6 +11,7 @@
 
 namespace toTwig\Converter;
 
+use AssertionError;
 use toTwig\SourceConverter\Token\TokenTag;
 
 /**
@@ -29,10 +30,38 @@ class ForConverter extends ConverterAbstract
             ->replaceOpenTag('foreachelse', fn () => '{% else %}');
         $content = $this->replaceForEach($content);
         $content = $this->replaceFor($content);
-        $content = $content->replaceOpenTag('index', fn () => 'loop.index0');
-        $content = $content->replaceOpenTag('iteration', fn () => 'loop.index');
-        $content = $content->replaceOpenTag('first', fn () => 'loop.first');
-        $content = $content->replaceOpenTag('last', fn () => 'loop.last');
+        foreach ([
+            'index' => 'loop.index0',
+            'iteration' => 'loop.index',
+            'first' => 'loop.first',
+            'last' => 'loop.last'
+        ] as $in => $out) {
+            $content = $content->replaceOpenTag($in, function (string $params) use ($out): string {
+                if (trim($params) !== '') {
+                    $return = $out;
+                    if (!preg_match('/^(?:\s*)is(?:\s+(not))?\s+(even|odd|div)(?:\s+by\s(\d+))?(.*)$/', $params, $q)) {
+                        throw new AssertionError("No match!");
+                    }
+                    [, $not, $op, $by, $rest] = $q;
+                    $operator = $not ? "is not $op" : "is $op";
+
+                    $outBy = $by ? "($out / $by)" : $out;
+                    $out = match ($operator) {
+                        'is not odd' => "($outBy % 2) !== 0",
+                        'is not even' => "($outBy % 2) === 0",
+                        'is odd' => "($outBy % 2) === 0",
+                        'is even' => "($outBy % 2) !== 0",
+
+                        'is not div' => "($out % $by) !== 0",
+                        'is div' => "($out % $by) === 0",
+                    };
+                    $out = "($out)";
+                    $out .= $rest;
+                    return '{{ '.$this->sanitizeExpression($out).' }}';
+                }
+                return "{{ $out }}";
+            });
+        }
 
         return $content;
     }
