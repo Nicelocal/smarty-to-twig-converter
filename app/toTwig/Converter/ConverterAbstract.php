@@ -169,6 +169,10 @@ abstract class ConverterAbstract
     private static function isVar(string $string): bool {
         return ($string[0] ?? '') === '$';
     }
+    private const STATE_SPLIT_NONE = 0;
+    private const STATE_SPLIT_IS = 1;
+    private const STATE_SPLIT_NOT = 2;
+    private const STATE_SPLIT_WAITING_BY = 4;
     private function splitSanitize(string $string): string {
         $assign_var = null;
         $assign_opt = false;
@@ -190,9 +194,56 @@ abstract class ConverterAbstract
         $final = [];
         $prevDelim = '';
         $prevValue = '';
+        $state = self::STATE_SPLIT_NONE;
+        $keyword = null;
+        $op = null;
+        $by = null;
+        $finalDelim = null;
         foreach ($pairs as [$value, $delim]) {
-            $delimNew = trim($delim);
-            $delimNew = self::DELIM_MAP[$delim] ?? $delim;
+            $delimNew = self::DELIM_MAP[trim($delim)] ?? $delim;
+
+            if ($value === 'is' && $state === self::STATE_SPLIT_NONE && in_array($prevValue, ['index', 'iteration', 'first', 'last'], true)) {
+                $keyword = $final[count($final)-2];
+                array_pop($final);
+                array_pop($final);
+                $state = self::STATE_SPLIT_IS;
+                continue;
+            } elseif ($value === 'not' && $state === self::STATE_SPLIT_IS) {
+                $state |= self::STATE_SPLIT_NOT;
+                continue;
+            } elseif ($state !== 0 && $op === null && in_array($value, ['even', 'odd', 'div'], true)) {
+                $op = $value;
+                $finalDelim = $delimNew;
+                continue;
+            } elseif ($state !== 0 && $op !== null && $value === 'by') {
+                $state |= self::STATE_SPLIT_WAITING_BY;
+                continue;
+            } elseif ($state & self::STATE_SPLIT_WAITING_BY) {
+                $by = $this->sanitizeValue($value);
+                $finalDelim = $delimNew;
+                continue;
+            } elseif ($state !== 0) {
+                $operator = $state & self::STATE_SPLIT_NOT ? "is not $op" : "is $op";
+    
+                $outBy = $by ? "($keyword / $by)" : $keyword;
+                $out = match ($operator) {
+                    'is not odd' => "($outBy % 2) is not same as(0)",
+                    'is not even' => "($outBy % 2) is same as(0)",
+                    'is odd' => "($outBy % 2) is same as(0)",
+                    'is even' => "($outBy % 2) is not same as (0)",
+    
+                    'is not div' => "($keyword % $by) is not same as(0)",
+                    'is div' => "($keyword % $by) is same as(0)",
+                };
+                $final []= $out;
+                $final []= $finalDelim;
+                $prevValue = $out; 
+                $prevDelim = $finalDelim;
+                $state = self::STATE_SPLIT_NONE;
+                $keyword = null;
+                $op = null;
+                $by = null;
+            }
 
             $delimCheck = trim($delim);
             if ($prevDelim === '->') {
@@ -226,9 +277,6 @@ abstract class ConverterAbstract
                 }
             }
 
-            if ($prevDelim === '!' && $value[0] !== '$') {
-                $value = '£'.$value;
-            }
             if ($delimNew === '=' || $delimNew === '++' || $delimNew === '--') {
                 if (($final[0]??'') === '' && ($final[1]??'') === ' ? ') {
                     $assign_opt = true;
@@ -258,6 +306,23 @@ abstract class ConverterAbstract
             $final []= $delimNew;
             $prevDelim = $delimCheck;
             $prevValue = $value;
+        }
+        if ($state !== 0) {
+            $operator = $state & self::STATE_SPLIT_NOT ? "is not $op" : "is $op";
+
+            $outBy = $by ? "($keyword / $by)" : $keyword;
+            $out = match ($operator) {
+                'is not odd' => "($outBy % 2) is not same as(0)",
+                'is not even' => "($outBy % 2) is same as(0)",
+                'is odd' => "($outBy % 2) is same as(0)",
+                'is even' => "($outBy % 2) is not same as (0)",
+
+                'is not div' => "($keyword % $by) is not same as(0)",
+                'is div' => "($keyword % $by) is same as(0)",
+            };
+            $final []= $out;
+            $final []= $finalDelim;
+            $state = self::STATE_SPLIT_NONE;
         }
         if ($assign_var) {
             if ($assign_opt) {
@@ -345,6 +410,18 @@ abstract class ConverterAbstract
 
         // Handle non-quoted strings
         if (preg_match("/^[a-zA-Z]\w+$/", $string)) {
+            if ($string === 'index') {
+                return 'loop.index0';
+            }
+            if ($string === 'iteration') {
+                return 'loop.index';
+            }
+            if ($string === 'first') {
+                return 'loop.first';
+            }
+            if ($string === 'last') {
+                return 'loop.last';
+            }
             if (!in_array($string, ["true", "false", "and", "or", "not", "null", "TRUE", "FALSE", "NULL"])) {
                 return "\"" . $string . "\"";
             }
@@ -355,7 +432,7 @@ abstract class ConverterAbstract
         $string = $this->convertArrayKey($string);
         $string = $this->convertIdentical($string);
 
-        $string = ltrim($string, '$£');
+        $string = ltrim($string, '$');
 
         return $string;
     }
