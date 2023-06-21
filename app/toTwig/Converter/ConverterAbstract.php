@@ -635,7 +635,11 @@ abstract class ConverterAbstract
         $last_filter = '';
         $append_filter = function (string &$filter_name, array &$filter_args) use (&$final, &$last_filter) {
             $filter_name = FilterNameMap::getConvertedFilterName(ltrim($filter_name, '@'));
-            $last_filter = $filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
+            if ($filter_name === 'replace') {
+                $last_filter = $filter_name.($filter_args ? '({'.implode(':', $filter_args).'})' : '');
+            } else {
+                $last_filter = $filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
+            }
             $final []= '|'.$last_filter;
             $filter_name = '';
             $filter_args = [];
