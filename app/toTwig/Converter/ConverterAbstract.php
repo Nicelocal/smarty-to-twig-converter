@@ -179,15 +179,22 @@ abstract class ConverterAbstract
 
         $pairs = [];
         $prevValue = '';
+        $prevValueUntrimmed = '';
         $prevDelim = '';
         for ($x = 0; $x < strlen($string); $x++) {
-            [$value, $delim] = $this->parseValue($string, $x, self::TOKENS);
+            [$value, $delim, $valueUntrimmed] = $this->parseValue($string, $x, self::TOKENS);
+            if ($prevDelim === '.' && ($prevValueUntrimmed[0] ?? '') === '$' && ($valueUntrimmed[0] ?? '') === '$') {
+                $last = array_pop($pairs);
+                $last[1] = $prevDelim = '->';
+                $pairs []= $last;
+            }
             if (trim($value) === '' && $prevDelim === ' ') {
                 array_pop($pairs);
                 $value = $prevValue;
             }
             $pairs []= [$value, $delim];
             $prevValue = $value;
+            $prevValueUntrimmed = $valueUntrimmed;
             $prevDelim = $delim;
         }
 
@@ -382,13 +389,13 @@ abstract class ConverterAbstract
                     $stack []= ')';
                 } elseif ($has_delim && !$stack && !(trim($d) === '' && trim($value) === '')) {
                     $x += strlen($d)-1;
-                    return [trim($value), $d];
+                    return [trim($value), $d, $value];
                 } else {
                     $value .= $cur;
                 }
             }
         }
-        return [trim($value), ''];
+        return [trim($value), '', $value];
     }
 
     /**
@@ -489,6 +496,14 @@ abstract class ConverterAbstract
                             throw new AssertionError();
                         }
                         $final .= trim($args[0], '"')." is defined";
+                    } elseif ($function_name === 'dump') {
+                        foreach ($args as &$arg) {
+                            $arg = trim($arg);
+                            if (preg_match("/^var\[['\"](\w+)['\"]\]$/", $arg, $matches)) {
+                                $arg = $matches[1];
+                            }
+                        }
+                        $final .= $function_name.'('.implode(',', $args).')';
                     } else {
                         $final .= $function_name.'('.implode(',', $args).')';
                     }
