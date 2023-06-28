@@ -7,14 +7,19 @@
 namespace toTwig\Converter;
 
 use AssertionError;
+use PhpParser\Node;
 use PhpParser\Node\Arg;
+use PhpParser\Node\Expr\ArrayDimFetch;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\Print_;
+use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Name;
 use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\Echo_;
 use PhpParser\Node\Stmt\Expression;
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitorAbstract;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard;
@@ -29,10 +34,24 @@ class PhpConverter extends ConverterAbstract
 
     private Parser $parser;
     private PrettyPrinterAbstract $printer;
+    private NodeTraverser $traverser;
     public function __construct()
     {
         $this->parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
         $this->printer = new Standard();
+        $this->traverser = new NodeTraverser;
+        $this->traverser->addVisitor(new class extends NodeVisitorAbstract {
+            public function enterNode(Node $node)
+            {
+                if ($node instanceof ArrayDimFetch
+                    && $node->var instanceof Variable
+                    && $node->var->name === 'var'
+                    && $node->dim instanceof String_
+                ) {
+                    return new Variable($node->dim->value);
+                }
+            }
+        });
     }
 
     public function convert(TokenTag $content): TokenTag
@@ -42,6 +61,7 @@ class PhpConverter extends ConverterAbstract
             $content->next = $content->next->next->next;
 
             $parsed = $this->parser->parse("<?php $code");
+            $parsed = $this->traverser->traverse($parsed);
             if (count($parsed) !== 1) {
                 throw new AssertionError("Only one statement is expected: $code");
             }
