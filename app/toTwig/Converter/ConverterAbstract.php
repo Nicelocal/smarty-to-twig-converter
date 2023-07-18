@@ -130,6 +130,8 @@ abstract class ConverterAbstract
         '==',
         '!',
         '&&',
+        'AND',
+        'OR',
         '||',
         '-',
         '=>',
@@ -142,13 +144,15 @@ abstract class ConverterAbstract
         '.',
         '->',
         '~',
-        '='
+        '=',
     ];
 
     private const DELIM_MAP = [
         '!' => 'not',
         '&&' => 'and',
         '||' => 'or',
+        'AND' => 'and',
+        'OR' => 'or',
         'mod' => '%',
 
         'gt' => '>',
@@ -289,6 +293,17 @@ abstract class ConverterAbstract
                     $assign_opt = true;
                     array_shift($final);
                     array_shift($final);
+                } elseif ($delimNew === '=' && count($final) === 2 && trim($final[1]) === '') {
+                    $name = array_shift($pairs)[0];
+                    $params = '';
+                    foreach ($pairs as [$value, $delim]) {
+                        $params .= $value.$delim;
+                    }
+                    $final = [];
+                    foreach ($this->extractAttributes($params) as $key => $value) {
+                        $final []= '"'.$key.'": '.$value;
+                    }
+                    return $name.'({'.implode(', ', $final).'})';
                 }
                 $assign_var = trim(implode('', $final).$this->sanitizeValue($value));
                 if ($delimNew !== '=') {
