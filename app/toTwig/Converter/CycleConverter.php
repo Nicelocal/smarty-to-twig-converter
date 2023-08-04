@@ -72,7 +72,7 @@ class CycleConverter extends ConverterAbstract
                 continue;
             }
 
-            $extraParameters[] = $this->sanitizeVariableName($name) . ": " . $this->sanitizeExpression($value);
+            $extraParameters[] = $this->sanitizeVariableName($name) . ": " . $value;
         }
 
         return $extraParameters;
