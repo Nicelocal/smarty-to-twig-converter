@@ -23,7 +23,7 @@ class CaptureConverter extends ConverterAbstract
         $content = $content->replaceOpenTag(
             'capture',
             function ($matches) {
-                $attr = $this->getAttributes($matches);
+                $attr = $this->extractAttributes($matches);
                 if (isset($attr['name'])) {
                     $attr['name'] = $this->sanitizeVariableName($attr['name']);
                     $string = '{% set __capture_:name %}';

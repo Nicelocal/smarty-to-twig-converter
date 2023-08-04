@@ -29,7 +29,7 @@ class MathConverter extends ConverterAbstract
                  * $matches[1] should contain a string with all attributes passed to a tag i.e.
                  * 'equation="x + y" x=1 y=2}'
                  */
-                $attr = $this->getAttributes($matches);
+                $attr = $this->extractAttributes($matches);
                 $vars = $attr;
                 unset($vars['equation']);
                 unset($vars['format']);

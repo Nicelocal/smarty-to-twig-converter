@@ -37,12 +37,12 @@ class BlockConverter extends ConverterAbstract
     private function replaceBlock(TokenTag $content): Token
     {
         return $content->replaceOpenTag('block', function ($matches) {
-            $attr = $this->getAttributes($matches);
+            $attr = $this->extractAttributes($matches);
 
             if (isset($attr['name'])) {
-                $name = $this->sanitizeExpression($attr['name']);
+                $name = $attr['name'];
             } else {
-                $name = $this->sanitizeExpression(array_shift($attr));
+                $name = array_shift($attr);
             }
 
             $block = "block ".trim($name, '"');
@@ -59,8 +59,8 @@ class BlockConverter extends ConverterAbstract
         return $content->replaceOpenTag(
             'extends',
             function ($matches) {
-                $attr = $this->getAttributes($matches);
-                $file = $this->sanitizeExpression(reset($attr));
+                $attr = $this->extractAttributes($matches);
+                $file = reset($attr);
                 $file = $this->convertFileExtension($file);
 
                 return "{% extends $file %}";

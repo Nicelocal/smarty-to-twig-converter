@@ -26,12 +26,22 @@ class IncludeConverter extends ConverterAbstract
     protected string $string = '{% include :template :with :vars %}';
     protected string $attrName = 'file';
 
+
+    private function getOptionalReplaceVariables(array $attr): string
+    {
+        $vars = [];
+        foreach ($attr as $key => $value) {
+            $vars[] = $this->sanitizeVariableName($key) . ": " . $value;
+        }
+
+        return '{' . implode(', ', $vars) . '}';
+    }
     public function convert(TokenTag $content): TokenTag
     {
         return $content->replaceOpenTag(
             $this->name,
             function ($matches) use ($content) {
-                $attr = $this->getAttributes($matches);
+                $attr = $this->extractAttributes($matches);
                 $replace = [];
                 $replace['template'] = $this->convertFileExtension($attr[$this->attrName]);
                 if (isset($attr['insert'])) {

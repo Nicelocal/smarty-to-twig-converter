@@ -22,7 +22,7 @@ class CounterConverter extends ConverterAbstract
         return $content->replaceOpenTag(
             'counter',
             function ($matches) {
-                $attr = $this->getAttributes($matches);
+                $attr = $this->extractAttributes($matches);
 
                 $replace['name'] = $this->getNameAttribute($attr);
                 $replace['direction'] = $this->getDirectionAttribute($attr);

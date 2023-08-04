@@ -42,7 +42,6 @@ class ForConverter extends ConverterAbstract
                 } else {
                     $replace = $this->getReplaceArgumentsForSmarty2($match);
                 }
-                $replace['from'] = $this->sanitizeExpression($replace['from']);
                 return $this->replaceNamedArguments('{% for :key :item in :from %}', $replace);
             }
         );
@@ -101,7 +100,7 @@ class ForConverter extends ConverterAbstract
      */
     private function getReplaceArgumentsForSmarty2(string $match): array
     {
-        $attr = $this->getAttributes($match);
+        $attr = $this->extractAttributes($match);
 
         if (isset($attr['key'])) {
             $replace['key'] = $this->sanitizeVariableName($attr['key']) . ',';

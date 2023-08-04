@@ -43,7 +43,7 @@ class DefunConverter extends ConverterAbstract
         return $content->replaceOpenTag(
             'defun',
             function ($matches) use ($string) {
-                $attr = $this->getAttributes($matches);
+                $attr = $this->extractAttributes($matches);
                 $this->macroName = $this->sanitizeVariableName($attr['name']);
                 $parameters = $this->getParameters($attr);
                 $this->setArguments($attr);
@@ -60,7 +60,7 @@ class DefunConverter extends ConverterAbstract
         return $content->replaceOpenTag(
             'fun',
             function ($matches) {
-                $attr = $this->getAttributes($matches);
+                $attr = $this->extractAttributes($matches);
                 $macroName = $this->sanitizeVariableName($attr['name']);
 
                 // we have to use local macro variables as arguments passed to the nested macro

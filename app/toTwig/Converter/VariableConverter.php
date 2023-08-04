@@ -12,6 +12,7 @@
 namespace toTwig\Converter;
 
 use AssertionError;
+use toTwig\NeedAttributeExtraction;
 use toTwig\SourceConverter\Token\TokenTag;
 
 /**
@@ -31,7 +32,16 @@ class VariableConverter extends ConverterAbstract
         if (ltrim($content->content)[0] === '/') {
             throw new AssertionError("Unrecognized close tag ".$content->content);
         }
-        $sanitized = $this->sanitizeExpression($content->content, true);
+        try {
+            $sanitized = $this->sanitizeExpression($content->content, true);
+        } catch (NeedAttributeExtraction) {
+            [$tag, $args] = explode(' ', trim($content->content), 2);
+            $final = [];
+            foreach ($this->extractAttributes($args) as $key => $value) {
+                $final []= '"'.$key.'": '.$value;
+            }
+            $sanitized = $tag.'({'.implode(', ', $final).'})';
+        }
         if (str_starts_with($sanitized, 'set ')) {
             $sanitized = '{% '.$sanitized.' %}';
         } else {

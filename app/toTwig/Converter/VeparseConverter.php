@@ -31,7 +31,7 @@ class VeparseConverter extends ConverterAbstract
         return $content->replaceOpenTag(
             'veparse',
             function ($matches) {
-                $attr = $this->getAttributes($matches);
+                $attr = $this->extractAttributes($matches);
 
                 $vars = [];
                 foreach ($attr as $key => $value) {

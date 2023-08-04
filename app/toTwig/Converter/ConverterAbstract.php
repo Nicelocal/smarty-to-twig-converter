@@ -15,6 +15,7 @@ use AssertionError;
 use Exception;
 use SplFileInfo;
 use toTwig\FilterNameMap;
+use toTwig\NeedAttributeExtraction;
 use toTwig\SourceConverter\Token;
 use toTwig\SourceConverter\Token\TokenTag;
 
@@ -98,14 +99,14 @@ abstract class ConverterAbstract
                     $key .= $cur;
                 }
             } else {
-                [$value] = $this->parseValue($string, $x, [' ']);
+                $value = $this->sanitizeExpression($string, x: $x, terminators: [' ', "\n", "\t"]);
                 $pairs[trim($key)] = trim($value);
                 $key = '';
                 $is_key = true;
             }
         }
         $key = trim($key);
-        [$value] = $this->parseValue($string, $x, [' ']);
+        $value = $this->sanitizeExpression($string, x: $x, terminators: [' ', "\n", "\t"]);
         if ($key !== '') {
             $pairs[trim($key)] = trim($value);
         }
@@ -294,16 +295,7 @@ abstract class ConverterAbstract
                     array_shift($final);
                     array_shift($final);
                 } elseif ($delimNew === '=' && count($final) === 2 && trim($final[1]) === '') {
-                    $name = array_shift($pairs)[0];
-                    $params = '';
-                    foreach ($pairs as [$value, $delim]) {
-                        $params .= $value.$delim;
-                    }
-                    $final = [];
-                    foreach ($this->extractAttributes($params) as $key => $value) {
-                        $final []= '"'.$key.'": '.$value;
-                    }
-                    return $name.'({'.implode(', ', $final).'})';
+                    throw new NeedAttributeExtraction();
                 }
                 $assign_var = trim(implode('', $final).$this->sanitizeValue($value));
                 if ($delimNew !== '=') {
@@ -645,12 +637,11 @@ abstract class ConverterAbstract
      *   $matches[2] should contain a string with one of following characters: +, -, >, <, *, /, %, &&, ||
      *   $matches[3] should contain a string with second part of an expression i.e. $b
      */
-    protected function sanitizeExpression(string $string, bool $root = false): string
+    protected function sanitizeExpression(string $string, bool $root = false, int &$x = 0, array $terminators = []): string
     {
-        $x = 0;
         $final = '';
         while (1) {
-            $final .= $this->parseValue($string, $x, ['|'])[0];
+            $final .= $this->parseValue($string, $x, ['|', ...$terminators])[0];
             $x++;
             if (($string[$x] ?? '') === '|') {
                 $final .= '||';
@@ -662,58 +653,66 @@ abstract class ConverterAbstract
         $final = $this->splitSanitize($final);
         $final = [$final];
         
+        $trailer = '';
         $last_filter = '';
-        $append_filter = function (string &$filter_name, array &$filter_args) use (&$final, &$last_filter) {
-            $filter_name = FilterNameMap::getConvertedFilterName(ltrim($filter_name, '@'));
-            if ($filter_name === 'replace') {
-                $last_filter = $filter_name.($filter_args ? '({'.implode(':', $filter_args).'})' : '');
-            } else {
-                $last_filter = $filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
-            }
-            $final []= '|'.$last_filter;
+        if (($string[$x-1] ?? '') === '|') {
+            $append_filter = function (string &$filter_name, array &$filter_args) use (&$final, &$last_filter) {
+                $filter_name = FilterNameMap::getConvertedFilterName(ltrim($filter_name, '@'));
+                if ($filter_name === 'replace') {
+                    $last_filter = $filter_name.($filter_args ? '({'.implode(':', $filter_args).'})' : '');
+                } else {
+                    $last_filter = $filter_name.($filter_args ? '('.implode(', ', $filter_args).')' : '');
+                }
+                $final []= '|'.$last_filter;
+                $filter_name = '';
+                $filter_args = [];
+            };
+
+            $state = self::STATE_FILTER;
             $filter_name = '';
             $filter_args = [];
-        };
-
-        $state = self::STATE_FILTER;
-        $filter_name = '';
-        $filter_args = [];
-        for (; $x < strlen($string); $x++) {
-            $cur = $string[$x];
-            if ($state === self::STATE_ARGS) {
-                $filter_args []= $this->sanitizeExpression($this->parseValue($string, $x, [',', ':', ')', '|'])[0]);
-                if (($string[$x] ?? '') === ')') {
-                    $x++;
-                }
-                if (($string[$x] ?? '') === '|') {
-                    $append_filter($filter_name, $filter_args);
-                    $state = self::STATE_FILTER;
-                }
-            } elseif ($state === self::STATE_FILTER) {
-                if ($cur === ':' || $cur === '(') {
-                    $state = self::STATE_ARGS;
-                } elseif ($cur === ' ') {
-                    $append_filter($filter_name, $filter_args);
-                    break;
-                } elseif ($cur === '|') {
-                    $append_filter($filter_name, $filter_args);
-                    $state = self::STATE_FILTER;
+            for (; $x < strlen($string); $x++) {
+                $cur = $string[$x];
+                if ($state === self::STATE_ARGS) {
+                    $filter_args []= $this->sanitizeExpression($this->parseValue($string, $x, [',', ':', ')', '|'])[0]);
+                    if (($string[$x] ?? '') === ')') {
+                        $x++;
+                    }
+                    if (($string[$x] ?? '') === '|') {
+                        $append_filter($filter_name, $filter_args);
+                        $state = self::STATE_FILTER;
+                    }
+                } elseif ($state === self::STATE_FILTER) {
+                    if ($cur === ':' || $cur === '(') {
+                        $state = self::STATE_ARGS;
+                    } elseif ($cur === ' ') {
+                        $append_filter($filter_name, $filter_args);
+                        break;
+                    } elseif ($cur === '|') {
+                        $append_filter($filter_name, $filter_args);
+                        $state = self::STATE_FILTER;
+                    } else {
+                        $filter_name .= $cur;
+                    }
                 } else {
-                    $filter_name .= $cur;
+                    throw new AssertionError("Unreachable!");
                 }
+            }
+            if (trim($filter_name) !== '') {
+                $append_filter($filter_name, $filter_args);
+            }
+        } else {
+            if (!$terminators) {
+                $trailer = $this->splitSanitize(substr($string, $x));
             } else {
-                throw new AssertionError("Unreachable!");
+                $x--;
             }
         }
-        if (trim($filter_name) !== '') {
-            $append_filter($filter_name, $filter_args);
-        }
-        $trailer = $this->splitSanitize(substr($string, $x));
         $needs_raw = false;
         if ($root) {
             if (count($final) === 1) {
                 $x = 0;
-                [$parsed] = $this->parseValue($final[0], $x, ['|', ...self::TOKENS]);
+                [$parsed] = $this->parseValue($final[0], $x, ['|', ...self::TOKENS, ...$terminators]);
                 if ($x === strlen($final[0]) && $parsed[0] === '"') {
                     throw new \RuntimeException("Only one string expression: {$string}");
                 }
@@ -798,12 +797,7 @@ abstract class ConverterAbstract
     {
         return str_replace('.tpl', '.twig', $templateName);
     }
-
-    protected function getAttributes(string $attributes): array
-    {
-        return $this->extractAttributes($attributes);
-    }
-
+    
     protected function getPregReplaceCallbackMatch(array $matches): string
     {
         if (!isset($matches[1]) && $matches[0]) {
@@ -813,18 +807,5 @@ abstract class ConverterAbstract
         }
 
         return $match;
-    }
-
-    /**
-     * Used in InsertTrackerConverter nad IncludeConverter
-     */
-    protected function getOptionalReplaceVariables(array $attr): string
-    {
-        $vars = [];
-        foreach ($attr as $key => $value) {
-            $vars[] = $this->sanitizeVariableName($key) . ": " . $this->sanitizeExpression($value);
-        }
-
-        return '{' . implode(', ', $vars) . '}';
     }
 }

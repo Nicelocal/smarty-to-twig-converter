@@ -50,7 +50,7 @@ class SectionConverter extends ConverterAbstract
         return $content->replaceOpenTag(
             'section',
             function ($matches) {
-                $replacement = $this->getAttributes($matches);
+                $replacement = $this->extractAttributes($matches);
                 $replacement['start'] = isset($replacement['start']) ? $replacement['start'] : 0;
                 $replacement['name'] = $this->sanitizeVariableName($replacement['name']);
                 return $this->replaceNamedArguments('{% for :name in :start..:loop %}', $replacement);

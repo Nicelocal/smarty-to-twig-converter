@@ -27,7 +27,7 @@ class AssignConverter extends ConverterAbstract
     public function convert(TokenTag $content): TokenTag
     {
         return $content->replaceOpenTag($this->name, function ($attributes) {
-                $attr = $this->getAttributes($attributes);
+                $attr = $this->extractAttributes($attributes);
 
                 if (isset($attr['var'])) {
                     $key = $attr['var'];
@@ -47,7 +47,6 @@ class AssignConverter extends ConverterAbstract
                 }
 
                 $key = $this->sanitizeVariableName($key);
-                $value = $this->sanitizeExpression($value);
                 return $this->replaceNamedArguments('{% set :key = :value %}', ['key' => $key, 'value' => $value]);
             }
         );
