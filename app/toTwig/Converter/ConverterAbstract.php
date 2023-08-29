@@ -197,6 +197,10 @@ abstract class ConverterAbstract
                 array_pop($pairs);
                 $value = $prevValue;
             }
+            if ($prevDelim === ' ' && $value[0] === '(') {
+                array_pop($pairs);
+                $value = $prevValue.$value;
+            }
             $pairs []= [$value, $delim];
             $prevValue = $value;
             $prevValueUntrimmed = $valueUntrimmed;
