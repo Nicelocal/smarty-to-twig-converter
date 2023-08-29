@@ -689,7 +689,7 @@ abstract class ConverterAbstract
                 } elseif ($state === self::STATE_FILTER) {
                     if ($cur === ':' || $cur === '(') {
                         $state = self::STATE_ARGS;
-                    } elseif ($cur === ' ') {
+                    } elseif ($cur === ' ' || $cur === "\n" || $cur === "\r") {
                         $append_filter($filter_name, $filter_args);
                         break;
                     } elseif ($cur === '|') {
@@ -704,6 +704,9 @@ abstract class ConverterAbstract
             }
             if (trim($filter_name) !== '') {
                 $append_filter($filter_name, $filter_args);
+            }
+            if (!$terminators && trim(substr($string, $x)) !== '') {
+                $trailer = ' '.$this->sanitizeExpression($string, $root, $x);
             }
         } else {
             if (!$terminators) {
