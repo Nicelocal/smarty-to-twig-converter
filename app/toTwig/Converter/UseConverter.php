@@ -30,6 +30,16 @@ class UseConverter extends ConverterAbstract
             ->replaceCloseTag('use', '', true);
     }
 
+    private function splitParsing(string $string, string $delim): array {
+        $final = [];
+        for ($x = 0; $x < strlen($string); $x++) {
+            $final []= $this->parseValue($string, $x, [$delim])[0];
+            if ($x === strlen($string)-1) {
+                $final []= '';
+            }
+        }
+        return $final;
+    }
     private function convertTag(TokenTag $content, bool $addIf): TokenTag {
         return $content->replaceOpenTag(
             $addIf ? 'useif' : 'use',

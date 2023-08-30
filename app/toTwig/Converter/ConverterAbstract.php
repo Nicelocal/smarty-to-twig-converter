@@ -351,16 +351,6 @@ abstract class ConverterAbstract
         }
         return implode('', $final);
     }
-    protected function splitParsing(string $string, string $delim): array {
-        $final = [];
-        for ($x = 0; $x < strlen($string); $x++) {
-            $final []= $this->parseValue($string, $x, [$delim])[0];
-            if ($x === strlen($string)-1) {
-                $final []= '';
-            }
-        }
-        return $final;
-    }
     protected function parseValue(string $string, int &$x, array $delim): array {
         $stack = [];
         $value = '';
@@ -479,6 +469,14 @@ abstract class ConverterAbstract
             && substr($function_name, 0, -1) !== '$gmdate') {
             $string = "call_user_func($function_name, ".substr($string, $x);
             return $this->convertFunctionArguments($string);
+        }
+        if ($function_name === '') {
+            [$final] = $this->parseValue($string, $x, [')']);
+            $trailer = trim(substr($string, $x+1));
+            if ($trailer !== '') {
+                throw new AssertionError("Trailer is not empty: $trailer");
+            }
+            return '('.$this->sanitizeExpression($final).')';
         }
 
         do {
