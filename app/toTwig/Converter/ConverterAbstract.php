@@ -99,7 +99,7 @@ abstract class ConverterAbstract
                     $key .= $cur;
                 }
             } else {
-                $value = $this->sanitizeExpression($string, x: $x, terminators: [' ', "\n", "\t"]);
+                $value = $this->sanitizeExpression($string, x: $x, terminators: [' ', "\n", "\t", '"', "'"]);
                 $pairs[trim($key)] = trim($value);
                 $key = '';
                 $is_key = true;
@@ -379,6 +379,10 @@ abstract class ConverterAbstract
                         }
                     }
                     $value .= substr($string, $start, ($x-$start)+1);
+                    if ($has_delim && !$stack && !(trim($d) === '' && trim($value) === '')) {
+                        $x += strlen($d)-1;
+                        return [trim($value), $d, $value];
+                    }
                 } elseif ($cur === '[' && !$has_delim) {
                     $value .= $cur;
                     $stack []= ']';
