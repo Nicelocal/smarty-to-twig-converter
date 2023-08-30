@@ -27,7 +27,7 @@ final class TokenTag extends Token {
         $pos = strpos($this->content, $openTag);
         if ($pos === false
             || trim(substr($this->content, 0, $pos)) !== ''
-            || !in_array(substr($this->content, $pos+strlen($openTag), 1), ['', ' '], true)
+            || !in_array(substr($this->content, $pos+strlen($openTag), 1), ['', ' ', "\t", "\r", "\n"], true)
         ) {
             return $this;
         }
