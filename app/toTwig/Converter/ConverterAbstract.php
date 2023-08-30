@@ -196,8 +196,7 @@ abstract class ConverterAbstract
             if (trim($value) === '' && $prevDelim === ' ') {
                 array_pop($pairs);
                 $value = $prevValue;
-            }
-            if ($prevDelim === ' ' && $value[0] === '(') {
+            } elseif ($prevDelim === ' ' && $value[0] === '(') {
                 array_pop($pairs);
                 $value = $prevValue.$value;
             }
