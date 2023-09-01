@@ -99,8 +99,14 @@ abstract class ConverterAbstract
                     $key .= $cur;
                 }
             } else {
-                $value = $this->sanitizeExpression($string, x: $x, terminators: [' ', "\n", "\t", '"', "'"]);
-                $pairs[trim($key)] = trim($value);
+                $value = $this->sanitizeExpression($string, x: $x, terminators: ['=']);
+                if ($x !== strlen($string)) {
+                    $pos = max(strrpos($value, ' '), strrpos($value, "\t"), strrpos($value, "\n"), strrpos($value, "\r"), strrpos($value, '"'));
+                    $x -= strlen($value)-$pos;
+                    $value = substr($value, 0, $pos);
+                }
+                $value = trim($value);
+                $pairs[trim($key)] = $value;
                 $key = '';
                 $is_key = true;
             }
@@ -475,11 +481,11 @@ abstract class ConverterAbstract
         }
         if ($function_name === '') {
             [$final] = $this->parseValue($string, $x, [')']);
-            $trailer = trim(substr($string, $x+1));
-            if ($trailer !== '') {
+            $trailer = substr($string, $x+1);
+            /*if ($trailer !== '') {
                 throw new AssertionError("Trailer is not empty: $trailer");
-            }
-            return '('.$this->sanitizeExpression($final).')';
+            }*/
+            return '('.$this->sanitizeExpression($final).')'.$trailer;
         }
 
         do {
