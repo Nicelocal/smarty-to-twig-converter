@@ -105,7 +105,7 @@ abstract class ConverterAbstract
                     $x -= strlen($value)-$pos;
                     $value = substr($value, 0, $pos);
                 }
-                $value = $this->sanitizeValue(trim($value));
+                $value = $this->sanitizeExpression(trim($value));
                 $pairs[trim($key)] = $value;
                 $key = '';
                 $is_key = true;
