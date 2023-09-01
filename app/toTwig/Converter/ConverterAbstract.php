@@ -99,13 +99,13 @@ abstract class ConverterAbstract
                     $key .= $cur;
                 }
             } else {
-                $value = $this->sanitizeExpression($string, x: $x, terminators: ['=']);
+                $value = $this->parseValue($string, $x, ['='])[2];
                 if ($x !== strlen($string)) {
                     $pos = max(strrpos($value, ' '), strrpos($value, "\t"), strrpos($value, "\n"), strrpos($value, "\r"), strrpos($value, '"'));
                     $x -= strlen($value)-$pos;
                     $value = substr($value, 0, $pos);
                 }
-                $value = trim($value);
+                $value = $this->sanitizeValue(trim($value));
                 $pairs[trim($key)] = $value;
                 $key = '';
                 $is_key = true;
