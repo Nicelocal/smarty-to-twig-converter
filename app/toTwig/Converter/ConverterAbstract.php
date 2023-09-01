@@ -712,8 +712,12 @@ abstract class ConverterAbstract
             if (trim($filter_name) !== '') {
                 $append_filter($filter_name, $filter_args);
             }
-            if (!$terminators && trim(substr($string, $x)) !== '') {
-                $trailer = ' '.$this->sanitizeExpression($string, $root, $x);
+            if (substr($string, $x) !== '') {
+                if ($terminators) {
+                    $trailer = $this->parseValue($string, $x, ['|', ...$terminators])[2];
+                } else {
+                    $trailer = ' '.$this->sanitizeExpression($string, $root, $x);
+                }
             }
         } else {
             if (!$terminators) {
