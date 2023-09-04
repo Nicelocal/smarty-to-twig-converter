@@ -31,7 +31,7 @@ final class TokenTag extends Token {
         ) {
             return $this;
         }
-        $pos = strpos($this->content, ' ', $pos) ?: ($pos + strlen($openTag));
+        $pos = $pos + strlen($openTag);
         $args = substr($this->content, $pos);
         $result = $replacer($args);
         if ($args === $result) {
