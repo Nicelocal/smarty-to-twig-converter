@@ -290,7 +290,7 @@ abstract class ConverterAbstract
                     $final []= $this->sanitizeValue($prevValue);
                     $final []= ' ~ ';
                 } else {
-                    if (is_numeric($value[0]) && !is_numeric($prevValue)) {
+                    if (isset($value[0]) && is_numeric($value[0]) && !is_numeric($prevValue)) {
                         $value = "attribute($prevValue, \"$value\")";
                     } else {
                         $value = $prevValue.'.'.$value;
