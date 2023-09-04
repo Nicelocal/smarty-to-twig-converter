@@ -55,7 +55,11 @@ class ForConverter extends ConverterAbstract
                 $args = $this->extractAttributes($attrs);
 
                 $args['value'] = $this->sanitizeVariableName($args['value']);
-                $args['limit'] = $args['loop']-1;
+                if (is_numeric($args['loop'])) {
+                    $args['limit'] = $args['loop']-1;
+                } else {
+                    $args['limit'] = $args['loop'].'-1';
+                }
                 $args['step'] ??= 1;
                 $args['start'] ??= 0;
                 return $this->replaceNamedArguments(
