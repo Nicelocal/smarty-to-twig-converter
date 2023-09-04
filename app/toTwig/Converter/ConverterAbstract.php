@@ -103,7 +103,7 @@ abstract class ConverterAbstract
                 if ($x !== strlen($string)) {
                     $pos = max(strrpos($value, ' '), strrpos($value, "\t"), strrpos($value, "\n"), strrpos($value, "\r"), strrpos($value, '"'));
                     $x -= strlen($value)-$pos;
-                    $value = substr($value, 0, $pos);
+                    $value = substr($value, 0, $pos+1);
                 }
                 $value = $this->sanitizeExpression(trim($value));
                 $pairs[trim($key)] = $value;
