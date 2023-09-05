@@ -397,6 +397,9 @@ abstract class ConverterAbstract
                 } elseif ($cur === '(' && !$has_delim) {
                     $value .= $cur;
                     $stack []= ')';
+                } elseif ($cur === '?' && !$has_delim && trim($value) !== '') {
+                    $value .= $cur;
+                    $stack []= ':';
                 } elseif ($has_delim && !$stack && !(trim($d) === '' && trim($value) === '')) {
                     $x += strlen($d)-1;
                     return [trim($value), $d, $value];
