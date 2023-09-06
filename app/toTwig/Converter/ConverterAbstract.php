@@ -205,6 +205,10 @@ abstract class ConverterAbstract
             } elseif ($prevDelim === ' ' && $value[0] === '(') {
                 array_pop($pairs);
                 $value = $prevValue.$value;
+            } elseif ($prevDelim === '?' && $delim === '?' && trim($value) === '') {
+                array_pop($pairs);
+                $value = $prevValue;
+                $delim = '??';
             }
             $pairs []= [$value, $delim];
             $prevValue = $value;
@@ -361,7 +365,9 @@ abstract class ConverterAbstract
         $value = '';
         for (; $x < strlen($string); $x++) {
             $cur = $string[$x];
-            if (end($stack) === $cur) {
+            if (end($stack) === $cur || (
+                end($stack) === ':' && $cur === '?'
+            )) {
                 $value .= $cur;
                 array_pop($stack);
             } else {
