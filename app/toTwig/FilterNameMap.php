@@ -18,6 +18,7 @@ class FilterNameMap
         'date_format' => 'date_format',
         'count' => 'length',
         'strip_tags' => 'striptags',
+        'slice' => 'slice_str'
     ];
 
     public static function getConvertedFilterName(string $filterName): string
